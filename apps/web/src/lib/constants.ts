@@ -1,4 +1,4 @@
-export const APP_NAME = 'YOT AI 平台';
+export const APP_NAME = 'AI 文件與知識平台';
 export const APP_DESCRIPTION = '仁愛堂 AI 文件與知識平台';
 
 export const DEFAULT_MODEL = 'deepseek-chat';

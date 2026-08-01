@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "YOT AI 平台 — 仁愛堂",
+  title: "仁愛堂 AI 文件與知識平台",
   description: "仁愛堂 AI 文件與知識平台",
 };
 

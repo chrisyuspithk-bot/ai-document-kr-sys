@@ -50,7 +50,7 @@ export function Sidebar() {
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
             <BookOpen className="h-5 w-5 text-primary" />
-            <span className="text-sm">YOT AI 平台</span>
+            <span className="text-sm">AI 文件與知識平台</span>
           </Link>
         )}
         <Button

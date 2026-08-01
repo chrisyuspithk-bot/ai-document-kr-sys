@@ -19,6 +19,7 @@ const ACTION_PATH: Record<string, string> = {
   submit: 'submit',
   approve: 'approve',
   reject: 'reject',
+  revise: 'revise',
 };
 
 export default function DocGenPage() {
@@ -59,10 +60,22 @@ export default function DocGenPage() {
   async function handleAction(docId: string, action: string) {
     const actionPath = ACTION_PATH[action];
     if (!actionPath) return;
-    setSubmitting(true);
+    setSubmitting(true); setError('');
     try {
-      await apiFetchJson(`/api/v1/gen-documents/${docId}/${actionPath}`, token, { method: 'POST' });
-      setGenerated(null); setPrompt('');
+      const body: any = {};
+      if (action === 'revise') {
+        body.prompt = revisionPrompt;
+      }
+      const data = await apiFetchJson(`/api/v1/gen-documents/${docId}/${actionPath}`, token, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      if (action === 'revise') {
+        setGenerated(data);
+        setRevisionPrompt('');
+      } else {
+        setGenerated(data);
+      }
     } catch { setError('操作失敗。'); }
     finally { setSubmitting(false); }
   }
@@ -122,7 +135,7 @@ export default function DocGenPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div><CardTitle className="text-lg">{generated.title}</CardTitle>
-                  <CardDescription>狀態：<Badge>{generated.status === 'draft' ? '草稿' : generated.status === 'submitted' ? '已提交' : generated.status === 'approved' ? '已核准' : generated.status}</Badge></CardDescription>
+                  <CardDescription>狀態：<Badge>{generated.status === 'draft' ? '草稿' : generated.status === 'submitted' ? '已提交' : generated.status === 'approved' ? '已核准' : generated.status === 'rejected' ? '已退回' : generated.status}</Badge></CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" disabled={submitting} onClick={() => handleExport(generated.id, 'docx')}><Download className="mr-1 h-4 w-4" />匯出 Word</Button>
@@ -132,7 +145,7 @@ export default function DocGenPage() {
               <CardContent>
                 <div className="markdown-body border rounded-lg p-6 bg-background min-h-40"><ReactMarkdown>{generated.content || '（無內容）'}</ReactMarkdown></div>
                 <div className="mt-4 space-y-3">
-                  <div className="space-y-2"><Label>修改指示</Label><div className="flex gap-2"><Input placeholder="描述需要的修改…" value={revisionPrompt} onChange={(e) => setRevisionPrompt(e.target.value)} /><Button variant="outline" disabled={!revisionPrompt.trim() || submitting}>修改</Button></div></div>
+                  <div className="space-y-2"><Label>修改指示</Label><div className="flex gap-2"><Input placeholder="描述需要的修改…" value={revisionPrompt} onChange={(e) => setRevisionPrompt(e.target.value)} /><Button variant="outline" disabled={!revisionPrompt.trim() || submitting} onClick={() => handleAction(generated.id, 'revise')}>修改</Button></div></div>
                   <div className="flex gap-2 justify-end border-t pt-3">
                     <Button variant="outline" onClick={() => handleAction(generated.id, 'submit')} disabled={submitting}><Send className="mr-1 h-4 w-4" />提交審批</Button>
                     <Button variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleAction(generated.id, 'approve')} disabled={submitting}><Check className="mr-1 h-4 w-4" />核准</Button>

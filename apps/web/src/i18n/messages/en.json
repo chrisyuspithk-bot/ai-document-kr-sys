@@ -1,7 +1,7 @@
 {
   "common": {
-    "appName": "YOT AI Document & Knowledge Platform",
-    "appNameShort": "YOT AI Platform",
+    "appName": "AI Document & Knowledge Platform",
+    "appNameShort": "AI Platform",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -49,7 +49,7 @@
   },
   "auth": {
     "login": "Login",
-    "loginTitle": "Login to YOT AI Platform",
+    "loginTitle": "Login to AI Platform",
     "loginSubtitle": "Please sign in with your Microsoft 365 account",
     "loginWithMicrosoft": "Sign in with Microsoft 365",
     "loginWithPassword": "Sign in with password",
@@ -225,7 +225,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Welcome to the YOT AI Document & Knowledge Platform",
+    "welcome": "Welcome to the AI Document & Knowledge Platform",
     "recentChats": "Recent Chats",
     "recentDocuments": "Recent Documents",
     "recentMeetings": "Recent Meetings",

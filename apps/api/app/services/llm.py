@@ -301,8 +301,8 @@ def _or_headers(key: str) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://yot.aidg.internal",
-        "X-Title": "YOT AIDG-KR",
+        "HTTP-Referer": "https://aidg.internal",
+        "X-Title": "AIDG-KR",
     }
 
 

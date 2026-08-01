@@ -131,7 +131,7 @@ async def revise_document(
 #  Export
 #  ---------------------------------------------------------------------------
 
-_YOT_STYLE = """
+_DOC_STYLE = """
 <style>
   @page { size: A4; margin: 2.5cm 2cm 2.5cm 2cm; }
   body { font-family: "Noto Sans TC", "Microsoft JhengHei", "PMingLiU", serif;
@@ -209,7 +209,7 @@ async def _md_to_pdf(markdown_content: str, output_path: Path) -> str:
     )
     html = f"""<!DOCTYPE html>
 <html lang="zh-Hant">
-<head><meta charset="utf-8">{_YOT_STYLE}</head>
+<head><meta charset="utf-8">{_DOC_STYLE}</head>
 <body>{html_body}</body>
 </html>"""
 
