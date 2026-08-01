@@ -236,6 +236,26 @@ interfaces. Models are DB-registered rows; switching providers = config + key, n
 - **US-2.3** As an admin, I re-index a document after a new version is approved.
 - **US-2.4** As an admin, I bulk-import a folder of documents.
 
+> **Status (implemented):** ✅ KB CRUD + org scoping; document upload (multipart,
+> 50 MB cap) with versioning (`document_id` → new version); parse pipeline
+> (PDF/pypdf, DOCX/python-docx, XLSX/CSV, PPTX extract, HTML, TXT w/ big5 fallback);
+> CJK-aware chunker; embeddings via Jina `jina-embeddings-v3` (mock in tests/CI);
+> indexing job `draft → processing → indexed|failed`; re-index endpoint;
+> approval fields (`is_approved`, `approved_at/by`); audit on every mutation.
+> Bulk import + OCR for scans deferred to Epic 7 (pipeline adapter point is in
+> `apps/api/app/services/parsers.py`). Retrieval (vector+keyword) is implemented
+> as Epic 3's foundation — see below.
+
+### Epic 2/3 — Retrieval foundation (implemented)
+Hybrid retrieval `POST /api/v1/retrieval/search` (`apps/api/app/services/retrieval.py`):
+
+- **Vector:** pgvector `vector(1024)` column + **HNSW index** (`vector_cosine_ops`); query vector bound as `pgvector.sqlalchemy.Vector`, `<=>` with `return_type=Float`.
+- **Keyword:** pg_trgm **`word_similarity(query, content)`** — far better than whole-string `similarity` for CJK phrases (empirically `長者申請資格門檻` → 0.22 vs 0.007); GIN trgm index on `content`.
+- **Fusion:** Reciprocal Rank Fusion (k=60) then score blend `0.6·vector + 0.4·keyword`; negative vector similarity clamped to zero so orthogonal noise never penalises a keyword hit.
+- **Scoping:** org + KB filters enforced inside SQL; endpoint rejects out-of-scope `kb_ids` (403) and unknown ids (400); superuser sees all.
+- **Audit:** every search writes `retrieval.search` with query/scope/result count.
+- **SQLite dev/CI path:** keyword-only via ILIKE (no pgvector) so tests run without Postgres.
+
 ### Epic 3 — RAG & Answer Engine (P0)
 - Hybrid search (vector+BM25+metadata, RRF), rerank (GTE), top-k + score thresholds
 - Source citations (document/page/paragraph), groundedness + confidence; answer formats; cross-KB within permission; full retrieval audit

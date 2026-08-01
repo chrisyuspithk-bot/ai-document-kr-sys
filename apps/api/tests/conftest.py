@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import os
+
+# Apply settings before any app module is imported (get_settings is cached).
+os.environ["AIDG_STORAGE_BACKEND"] = "local"
+os.environ["AIDG_LOCAL_STORAGE_ROOT"] = "data/uploads-test"
+os.environ["AIDG_JINA_API_KEY"] = ""
+os.environ["AIDG_STT_PROVIDER"] = "mock"
+
 import httpx
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine

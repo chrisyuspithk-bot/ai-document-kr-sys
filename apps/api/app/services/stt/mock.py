@@ -8,9 +8,7 @@ from app.services.stt.base import (
     TranscriptionSegment,
 )
 
-MOCK_TRANSCRIPT = (
-    "這是會議錄音的模擬轉錄文字。請提供實際的語音轉錄服務設定。"
-)
+MOCK_TRANSCRIPT = "這是會議錄音的模擬轉錄文字。請提供實際的語音轉錄服務設定。"
 
 
 class MockSTTProvider(STTProvider):
@@ -27,9 +25,5 @@ class MockSTTProvider(STTProvider):
             provider=self.name,
             model="mock",
             language=language_hint or "zh-Hant",
-            segments=[
-                TranscriptionSegment(
-                    start=0.0, end=2.0, text=MOCK_TRANSCRIPT
-                )
-            ],
+            segments=[TranscriptionSegment(start=0.0, end=2.0, text=MOCK_TRANSCRIPT)],
         )

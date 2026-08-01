@@ -33,6 +33,17 @@ Security-relevant variables that must differ per environment:
 | `AIDG_REDIS_URL` | `redis://…` |
 | `AIDG_S3_*` | S3-compatible endpoint, keys, bucket |
 | `AIDG_OIDC_*` | Microsoft Entra ID tenant/client settings |
+| `AIDG_JINA_API_KEY` | embeddings (`jina-embeddings-v3`); leave empty to use the deterministic mock |
+| `AIDG_STORAGE_BACKEND` | `auto` → S3/MinIO when `AIDG_S3_ENDPOINT` is set, else local disk; `local` forces local disk (`AIDG_LOCAL_STORAGE_ROOT`) |
+| `AIDG_STT_PROVIDER` / `AIDG_OPENROUTER_*` | speech-to-text (OpenRouter default; `mock` for dev) |
+
+## Object storage
+
+Documents are stored via `app/services/storage.py` — a thin abstraction over
+S3-compatible storage with a local-disk fallback (`AIDG_STORAGE_BACKEND=local`).
+In production use **Alibaba Cloud OSS (HK)** with `AIDG_S3_ENDPOINT=https://oss-cn-hongkong.aliyuncs.com`
+and the appropriate bucket/keys. Object keys are `docs/{kb_id}/{random}_{filename}`;
+versions are immutable blobs referenced by `document_versions.storage_key`.
 
 ## Local development
 
@@ -56,6 +67,27 @@ PostgreSQL and must be applied before deploying a new API version:
 ```bash
 uv run alembic upgrade head     # apply
 uv run alembic downgrade -1     # roll back one step (dev only)
+```
+
+### Required PostgreSQL extensions (Epic 2)
+
+The schema uses two extensions, created by the `3f8c2625f16e` migration
+(`epic_2_knowledge_bases_documents_chunks`) — or manually on managed Postgres
+that forbids superuser DDL:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;    -- pgvector (embedding column, HNSW index)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- word_similarity keyword search, GIN index
+```
+
+Both extensions ship in the `pgvector/pgvector` Docker image used by
+`docker-compose.yml`. On Alibaba Cloud RDS/ApsaraDB for PostgreSQL, enable the
+`vector` (rds_pgvector) and `pg_trgm` plugins via the console before running
+migrations. Verify with:
+
+```sql
+SELECT extname FROM pg_extension WHERE extname IN ('vector','pg_trgm');
+SELECT indexname FROM pg_indexes WHERE indexname LIKE 'ix_document_chunks%';
 ```
 
 ## Backups & data portability

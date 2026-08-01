@@ -67,9 +67,16 @@ Health checks: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (db + redi
 
 ```bash
 cd apps/api
-uv run pytest -q          # 30 tests: auth, RBAC, users, groups, orgs, audit
+uv run pytest -q          # 64 tests: auth, RBAC, users, groups, orgs, audit, KBs, documents, retrieval, STT
 uv run ruff check app tests
 uv run ruff format --check app tests
+```
+
+Live smoke test (requires Postgres/pgvector up-to-date, mock embeddings by default):
+
+```bash
+cd apps/api
+uv run python scripts/smoke_knowledge.py
 ```
 
 ## Module implementation status
@@ -78,8 +85,8 @@ uv run ruff format --check app tests
 |--------|--------|
 | A — Unified AI Portal (frontend) | pending (next epic) |
 | B — Backend Management Platform | in progress — auth/RBAC/users/groups/orgs/audit APIs done |
-| C — Knowledge Base & Documents | pending |
-| D — RAG & Answer Generation | pending |
+| C — Knowledge Base & Documents | **done (Epic 2)** — KBs, document upload/versioning, parsing (PDF/Word/Excel/PPT/TXT/HTML/CSV), chunking, embeddings, indexing pipeline, approval |
+| D — RAG & Answer Generation | in progress — hybrid retrieval (pgvector + pg_trgm, RRF) done; LLM answer generation pending |
 | E — Document Generation | pending |
 | F — Speech-to-Text & Meetings | in progress — **OpenRouter ASR provider live** (verified), mock for dev; meeting endpoints pending |
 | G — Workflow Automation | pending (Dify as external engine) |

@@ -9,8 +9,10 @@ from app.api.v1.endpoints import (
     auth,
     groups,
     health,
+    knowledge_bases,
     organizations,
     rbac,
+    retrieval,
     users,
 )
 
@@ -22,3 +24,5 @@ api_router.include_router(rbac.router)
 api_router.include_router(groups.router)
 api_router.include_router(organizations.router)
 api_router.include_router(audit.router)
+api_router.include_router(knowledge_bases.router)
+api_router.include_router(retrieval.router)

@@ -33,9 +33,7 @@ def get_stt_provider(settings: Settings | None = None) -> STTProvider:
 
     if provider == "openrouter":
         if not settings.openrouter_api_key:
-            raise STTError(
-                "OpenRouter STT selected but AIDG_OPENROUTER_API_KEY is not set"
-            )
+            raise STTError("OpenRouter STT selected but AIDG_OPENROUTER_API_KEY is not set")
         return OpenRouterSTTProvider(
             api_key=settings.openrouter_api_key,
             base_url=settings.openrouter_base_url,

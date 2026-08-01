@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     s3_access_key: str = "minioadmin"
     s3_secret_key: str = "minioadmin"
     s3_bucket: str = "aidg-documents"
+    # auto = S3 when s3_endpoint is set, otherwise local disk
+    storage_backend: str = "auto"
+    local_storage_root: str = "data/uploads"
 
     # --- Security / JWT ---
     jwt_secret: str = "dev-insecure-change-me"

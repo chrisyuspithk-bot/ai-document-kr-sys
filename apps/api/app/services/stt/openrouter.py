@@ -102,12 +102,8 @@ class OpenRouterSTTProvider(STTProvider):
 
         if response.status_code != 200:
             body = response.text[:500]
-            logger.warning(
-                "OpenRouter STT returned %s: %s", response.status_code, body
-            )
-            raise STTError(
-                f"OpenRouter STT failed with HTTP {response.status_code}: {body}"
-            )
+            logger.warning("OpenRouter STT returned %s: %s", response.status_code, body)
+            raise STTError(f"OpenRouter STT failed with HTTP {response.status_code}: {body}")
 
         try:
             data = response.json()

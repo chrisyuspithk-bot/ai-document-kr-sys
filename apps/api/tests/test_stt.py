@@ -60,13 +60,7 @@ async def test_openrouter_transcribe_success() -> None:
         return httpx.Response(
             200,
             json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "今日會議討論咗服務計劃嘅進度。"
-                        }
-                    }
-                ],
+                "choices": [{"message": {"content": "今日會議討論咗服務計劃嘅進度。"}}],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 20},
             },
         )
@@ -80,9 +74,7 @@ async def test_openrouter_transcribe_success() -> None:
         base_url="https://openrouter.ai/api/v1", transport=transport
     )
 
-    result = await provider.transcribe(
-        b"fake-audio-bytes", "audio/wav", language_hint="zh-yue"
-    )
+    result = await provider.transcribe(b"fake-audio-bytes", "audio/wav", language_hint="zh-yue")
     assert result.text == "今日會議討論咗服務計劃嘅進度。"
     assert result.provider == "openrouter"
     assert result.model == "mistralai/voxtral-small-24b-2507"
@@ -104,9 +96,7 @@ async def test_openrouter_http_error_raises_stt_error() -> None:
         )
 
     transport = httpx.MockTransport(handler)
-    provider = OpenRouterSTTProvider(
-        api_key="sk-test", base_url="https://openrouter.ai/api/v1"
-    )
+    provider = OpenRouterSTTProvider(api_key="sk-test", base_url="https://openrouter.ai/api/v1")
     provider._client = httpx.AsyncClient(
         base_url="https://openrouter.ai/api/v1", transport=transport
     )

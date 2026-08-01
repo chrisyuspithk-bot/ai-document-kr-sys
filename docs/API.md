@@ -102,6 +102,107 @@ Every protected endpoint enforces `require_permission(<code>)`. Unauthorized
 | GET    | `/healthz` | Liveness → `{"status":"ok"}` |
 | GET    | `/readyz`  | Readiness (db + redis) → 200 / 503 with per-check detail |
 
+## Knowledge Bases & Documents (Epic 2)
+
+All knowledge endpoints are permission-scoped: non-superusers only see the
+knowledge bases of their own organisation. `kb:read` / `kb:write` / `kb:delete`
+govern KB operations; `document:read` / `document:write` govern documents.
+
+### Knowledge bases
+
+| Method | Path                          | Permission   | Description |
+|--------|-------------------------------|--------------|-------------|
+| GET    | `/knowledge-bases`            | `kb:read`    | List KBs (org-scoped) |
+| POST   | `/knowledge-bases`            | `kb:write`   | Create KB — body `{name, description?, is_active?, org_id?}` (`org_id` superuser-only) |
+| GET    | `/knowledge-bases/{kbId}`     | `kb:read`    | Get KB |
+| PATCH  | `/knowledge-bases/{kbId}`     | `kb:write`   | Update KB (`name`, `description`, `is_active`) |
+| DELETE | `/knowledge-bases/{kbId}`     | `kb:delete`  | Delete KB + documents + chunks (204) |
+
+### Documents
+
+| Method | Path                                      | Permission      | Description |
+|--------|-------------------------------------------|-----------------|-------------|
+| GET    | `/knowledge-bases/{kbId}/documents`       | `document:read` | List documents (`?status=`) |
+| POST   | `/knowledge-bases/{kbId}/documents`       | `document:write`| Upload (multipart `file`, optional `title`, `document_id` for new version, `process_sync`) |
+| GET    | `/documents/{docId}`                      | `document:read` | Get document (+ `chunk_count`, `error_message`) |
+| PATCH  | `/documents/{docId}`                      | `document:write`| Update title / `is_approved` (sets `approved_at`) |
+| POST   | `/documents/{docId}/reindex`              | `document:write`| Re-run indexing for latest version (`?process_sync=true`) |
+| GET    | `/documents/{docId}/versions`             | `document:read` | Version history (newest first) |
+| GET    | `/documents/{docId}/chunks`               | `document:read` | Chunks of the current version (with `metadata.page`) |
+
+**Upload request** (multipart/form-data):
+
+```
+file          : required  — the binary file
+title         : optional  — display title (defaults to filename)
+document_id   : optional  — upload a new version of this document
+process_sync  : optional  — "true" processes+indexes inline; default queues a job
+```
+
+**Upload response** (`DocumentRead`):
+
+```json
+{
+  "id": "<uuid>",
+  "kb_id": "<uuid>",
+  "title": "長者服務中心指引",
+  "filename": "service_guide.txt",
+  "status": "indexed",
+  "version_number": 1,
+  "is_approved": false,
+  "chunk_count": 6,
+  "error_message": null,
+  "created_at": "…"
+}
+```
+
+`status` values: `draft` → `processing` → `indexed` | `failed`.
+
+### Retrieval (RAG foundation)
+
+| Method | Path                | Permission | Description |
+|--------|---------------------|------------|-------------|
+| POST   | `/retrieval/search` | `kb:read`  | Hybrid (vector + keyword) search across KBs within the caller's permission scope |
+
+**Request:**
+
+```json
+{
+  "query": "長者申請資格門檻",
+  "kb_ids": ["<uuid>", "<uuid>"],
+  "top_k": 10,
+  "min_score": 0.0
+}
+```
+
+- `kb_ids` optional — omitting it searches all visible KBs.
+- Requesting a KB outside your org → `403`; a non-existent id → `400`.
+
+**Response** — ranked results, best first:
+
+```json
+[
+  {
+    "chunk_id": "<uuid>",
+    "document_id": "<uuid>",
+    "kb_id": "<uuid>",
+    "document_title": "長者服務中心指引2025",
+    "content": "第三章 申請資格\n申請人須年滿六十歲…",
+    "page": 1,
+    "score": 0.4181,
+    "vector_score": 0.71,
+    "keyword_score": 0.22
+  }
+]
+```
+
+`score` is an RRF-weighted blend (`0.6 × vector + 0.4 × keyword`) with negative
+vector similarity clamped to zero. Retrieval attempts are written to the audit
+log (`retrieval.search`).
+
+Every retrieval and generation is audit-logged with the query, scope, model and
+result count (see `audit:read`).
+
 ## Pagination
 
 `/audit-logs` returns:
@@ -110,8 +211,8 @@ Every protected endpoint enforces `require_permission(<code>)`. Unauthorized
 { "items": [...], "total": 123, "page": 1, "size": 20 }
 ```
 
-## Upcoming modules (Epics 2–7)
+## Upcoming modules (Epics 3–7)
 
-Knowledge bases, documents, assistants, chat/SSE, generation, meetings/STT,
-workflows, and integration APIs will be added under the same `/api/v1` prefix
-with identical auth/permission conventions.
+AI assistants, chat/SSE answer generation, document generation, meetings/STT
+endpoints, workflows, and integration APIs will be added under the same
+`/api/v1` prefix with identical auth/permission conventions.
