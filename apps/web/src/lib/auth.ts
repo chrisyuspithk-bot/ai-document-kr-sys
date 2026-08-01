@@ -57,6 +57,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.permissions = (user as User & { permissions: string[] }).permissions;
         token.orgId = (user as User & { orgId: string }).orgId;
       }
+
+      // Refresh access token if expired
+      const accessToken = token.accessToken as string | undefined;
+      if (accessToken) {
+        try {
+          const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+          const now = Math.floor(Date.now() / 1000);
+          if (payload.exp && now >= payload.exp - 60) {
+            const refreshToken = token.refreshToken as string | undefined;
+            if (refreshToken) {
+              const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                token.accessToken = data.access_token;
+                token.refreshToken = data.refresh_token;
+              }
+            }
+          }
+        } catch { /* keep existing token if refresh fails */ }
+      }
       return token;
     },
     async session({ session, token }) {
