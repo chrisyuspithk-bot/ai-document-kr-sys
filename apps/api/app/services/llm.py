@@ -99,8 +99,8 @@ class DeepSeekProvider(LlmProvider):
     """
 
     def __init__(self, base_url: str | None = None) -> None:
-        self._base = (base_url or DEEPSEEK_BASE).rstrip("/")
-        self._key = os.getenv("DEEPSEEK_API_KEY", "")
+        self._base = (base_url or os.getenv("AIDG_DEEPSEEK_BASE_URL", DEEPSEEK_BASE)).rstrip("/")
+        self._key = os.getenv("AIDG_DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_API_KEY", "")
 
     async def chat(self, messages, *, model, temperature=0.3, max_tokens=4096, **kwargs):
         payload = _build_payload(messages, model, temperature, max_tokens, stream=False, **kwargs)
