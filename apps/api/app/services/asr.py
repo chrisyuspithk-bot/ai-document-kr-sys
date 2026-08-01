@@ -176,36 +176,59 @@ class QwenAsrProvider:
         )
 
 
-class MockAsrProvider:
-    """Mock provider for testing — returns a fixed transcript."""
+class LocalWhisperProvider:
+    """Local Whisper provider using faster-whisper (CTranslate2 backend).
+
+    Downloads the 'tiny' model (~75 MB) on first use — no API key needed.
+    Set ASR_MODEL_SIZE env var to change model size (tiny/base/small/medium/large).
+    """
+
+    def __init__(self):
+        self._model = None
+        self._model_size = os.getenv("ASR_MODEL_SIZE", "tiny")
 
     @property
     def provider_name(self) -> str:
-        return "mock"
+        return f"local-whisper({self._model_size})"
 
     async def transcribe(self, audio_path: str, language: str | None = None) -> AsrResult:
+        import asyncio
+
+        if self._model is None:
+            from faster_whisper import WhisperModel
+
+            compute = os.getenv("ASR_COMPUTE", "auto")  # auto/int8/float32
+            self._model = WhisperModel(self._model_size, device="cpu", compute_type=compute)
+
+        lang_map = {"yue": "zh", "zh-yue": "zh", "zh-tw": "zh", "zh-hant": "zh"}
+        whisper_lang = lang_map.get(language, language) if language else None
+
+        loop = asyncio.get_running_loop()
+        segments_raw, info = await loop.run_in_executor(
+            None,
+            lambda: list(self._model.transcribe(audio_path, language=whisper_lang)),
+        )
+
+        segments = []
+        full_parts = []
+        for seg in segments_raw:
+            segments.append({"start": seg.start, "end": seg.end, "text": seg.text.strip()})
+            full_parts.append(seg.text.strip())
+
         return AsrResult(
-            full_text=(
-                "[00:00] 大家好，歡迎參加今日會議。\n"
-                "[01:30] 今日主要討論仁愛堂新年度服務計劃。\n"
-                "[05:00] 決定增加長者社區支援服務的資源分配。"
-            ),
-            segments=[
-                {"start": 0, "end": 90, "text": "大家好，歡迎參加今日會議。"},
-                {"start": 90, "end": 300, "text": "今日主要討論仁愛堂新年度服務計劃。"},
-                {"start": 300, "end": 400, "text": "決定增加長者社區支援服務的資源分配。"},
-            ],
-            language=language or "yue",
-            confidence=0.95,
-            duration_seconds=400,
-            provider="mock",
+            full_text="\n".join(full_parts),
+            segments=segments,
+            language=info.language,
+            confidence=info.language_probability,
+            duration_seconds=info.duration,
+            provider=self.provider_name,
         )
 
 
 def get_asr_provider() -> AsrProvider:
     """Factory: returns the configured ASR provider.
 
-    Priority: QWEN_ASR_API_KEY → WHISPER_API_KEY → OPENAI_API_KEY → mock (dev).
+    Priority: QWEN_ASR_API_KEY → WHISPER_API_KEY → OPENAI_API_KEY → local → mock.
     """
     if os.getenv("QWEN_ASR_API_KEY"):
         logger.info("Using Qwen ASR provider")
@@ -213,8 +236,17 @@ def get_asr_provider() -> AsrProvider:
     if os.getenv("WHISPER_API_KEY") or os.getenv("OPENAI_API_KEY"):
         logger.info("Using Whisper ASR provider")
         return WhisperAsrProvider()
-    logger.warning("No ASR credentials set — using mock provider")
-    return MockAsrProvider()
+    try:
+        import faster_whisper  # noqa: F401
+
+        logger.info("Using local Whisper ASR provider")
+        return LocalWhisperProvider()
+    except ImportError:
+        logger.warning("faster-whisper not installed — no ASR available")
+        raise RuntimeError(
+            "No ASR provider available. Set QWEN_ASR_API_KEY, WHISPER_API_KEY, "
+            "or install faster-whisper."
+        )
 
 
 # ── helpers ───────────────────────────────────────────────────────────
