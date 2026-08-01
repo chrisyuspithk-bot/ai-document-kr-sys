@@ -1,8 +1,6 @@
 # AIDG & KR System
 
-**AI-Enabled Document Generation & Knowledge Retrieval System** for
-Yan Oi Tong Limited (YOT) — Social Services Division.
-Reference: **TEN-IT-26-0167**
+**AI-Enabled Document Generation & Knowledge Retrieval System** 
 
 A secure, multi-tenant-capable, AI-powered internal platform that lets YOT staff:
 
