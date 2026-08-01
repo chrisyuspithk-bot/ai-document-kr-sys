@@ -201,23 +201,20 @@ async def _md_to_docx(markdown_content: str, output_path: Path) -> str:
     return output_path
 
 
-async def _md_to_pdf(markdown_content: str, output_path: Path) -> str:
-    """Convert markdown to PDF via HTML + WeasyPrint."""
-    html_body = md_to_html(
-        markdown_content,
-        extensions=["tables", "fenced_code", "codehilite"],
-    )
-    html = f"""<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="utf-8">{_DOC_STYLE}</head>
-<body>{html_body}</body>
-</html>"""
-
-    from weasyprint import HTML
+async def _md_to_pdf(content: str, output_path: Path) -> str:
+    """Convert markdown to PDF via DOCX intermediate + PyMuPDF."""
+    import fitz
 
     _EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    docx_path = _EXPORT_DIR / f"{output_path.stem}_tmp.docx"
+    await _md_to_docx(content, docx_path)
+
+    doc = fitz.open(str(docx_path))
+    pdf_bytes = doc.convert_to_pdf()
+    doc.close()
     output_path = str(output_path)
-    HTML(string=html).write_pdf(output_path)
+    Path(output_path).write_bytes(pdf_bytes)
+    docx_path.unlink(missing_ok=True)  # remove intermediate
     return output_path
 
 
