@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     audit,
     auth,
     chat,
+    document_gen,
     groups,
     health,
     knowledge_bases,
@@ -28,3 +29,4 @@ api_router.include_router(audit.router)
 api_router.include_router(knowledge_bases.router)
 api_router.include_router(retrieval.router)
 api_router.include_router(chat.router)
+api_router.include_router(document_gen.router)

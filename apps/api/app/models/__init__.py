@@ -3,6 +3,14 @@
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.conversation import Conversation, Message
+from app.models.document_gen import (
+    DOCGEN_STATUS_APPROVED,
+    DOCGEN_STATUS_DRAFT,
+    DOCGEN_STATUS_REJECTED,
+    DOCGEN_STATUS_SUBMITTED,
+    DocumentTemplate,
+    GeneratedDocument,
+)
 from app.models.knowledge import (
     DOC_STATUS_ARCHIVED,
     DOC_STATUS_DRAFT,
@@ -49,6 +57,12 @@ __all__ = [
     "Document",
     "DocumentChunk",
     "DocumentVersion",
+    "DocumentTemplate",
+    "GeneratedDocument",
+    "DOCGEN_STATUS_APPROVED",
+    "DOCGEN_STATUS_DRAFT",
+    "DOCGEN_STATUS_REJECTED",
+    "DOCGEN_STATUS_SUBMITTED",
     "Group",
     "JOB_STATUS_FAILED",
     "JOB_STATUS_PENDING",

@@ -27,6 +27,8 @@ dependencies = [
     "easyocr>=1.7.0",
     "openpyxl>=3.1.5",
     "python-pptx>=1.0.2",
+    "weasyprint>=69.0",
+    "markdown>=3.10.3",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +52,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
+exclude = ["alembic/versions/"]
 line-length = 100
 target-version = "py312"
 
