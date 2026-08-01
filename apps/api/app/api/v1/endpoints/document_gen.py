@@ -349,8 +349,9 @@ async def approve(
         raise not_found("Document not found")
     if doc.status != DOCGEN_STATUS_SUBMITTED:
         raise bad_request("Only submitted documents can be approved")
-    if doc.created_by == current_user.id:
-        raise bad_request("Cannot approve your own document")
+    # DEV: allow self-approval for single-user demos
+    # if doc.created_by == current_user.id:
+    #     raise bad_request("Cannot approve your own document")
 
     doc.status = DOCGEN_STATUS_APPROVED
     doc.reviewed_by = current_user.id

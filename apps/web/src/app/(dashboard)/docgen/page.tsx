@@ -84,7 +84,12 @@ export default function DocGenPage() {
       } else {
         setGenerated(data);
       }
-    } catch { setError('操作失敗。'); }
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('401') || msg.includes('403')) setError('請重新登入後再試。');
+      else if (msg.includes('400')) setError('操作無法執行，請確認文件狀態。');
+      else setError('操作失敗。');
+    }
     finally { setSubmitting(false); }
   }
 
