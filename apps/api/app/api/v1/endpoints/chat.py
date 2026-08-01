@@ -10,9 +10,10 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.deps import DbSession, require_permission
-from app.core.exceptions import not_found
+from app.core.exceptions import bad_request, not_found
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.schemas.chat import (
@@ -23,8 +24,15 @@ from app.schemas.chat import (
     ConversationRead,
 )
 from app.services.audit_service import write_audit
+from app.services.llm import MODELS
 from app.services.permissions import KB_READ
-from app.services.rag import RAGCitation, RAGRequest, rag_query, rag_query_stream
+from app.services.rag import (
+    _FORMAT_INSTRUCTIONS,
+    RAGCitation,
+    RAGRequest,
+    rag_query,
+    rag_query_stream,
+)
 
 router = APIRouter(tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -42,6 +50,11 @@ async def chat(
     db: DbSession,
     current_user: User = Depends(require_permission(KB_READ)),
 ) -> ChatResponse:
+    if payload.model not in MODELS:
+        raise bad_request(f"Unknown model: {payload.model}")
+    if payload.format not in _FORMAT_INSTRUCTIONS:
+        raise bad_request(f"Unknown format: {payload.format}")
+
     # Create or reuse conversation
     conversation = await _get_or_create_conversation(
         db, current_user, payload.conversation_id, payload.query
@@ -140,6 +153,11 @@ async def chat_stream(
     db: DbSession,
     current_user: User = Depends(require_permission(KB_READ)),
 ):
+    if payload.model not in MODELS:
+        raise bad_request(f"Unknown model: {payload.model}")
+    if payload.format not in _FORMAT_INSTRUCTIONS:
+        raise bad_request(f"Unknown format: {payload.format}")
+
     # Create or reuse conversation
     conversation = await _get_or_create_conversation(
         db, current_user, payload.conversation_id, payload.query
@@ -183,7 +201,14 @@ async def chat_stream(
                     # LlmStreamChunk
                     if item.delta:
                         full_answer.append(item.delta)
-                        yield f"data: {json.dumps({'type': 'token', 'content': item.delta})}\n\n"
+                        yield (
+                            "data: "
+                            + json.dumps(
+                                {"type": "token", "content": item.delta},
+                                ensure_ascii=False,
+                            )
+                            + "\n\n"
+                        )
 
             # Save assistant message
             answer_text = "".join(full_answer)
@@ -199,10 +224,17 @@ async def chat_stream(
             await db.commit()
 
             # Send citations and done
-            yield f"data: {json.dumps({'type': 'citations', 'items': citations})}\n\n"
             yield (
                 "data: "
-                + json.dumps({"type": "done", "conversation_id": str(conversation.id)})
+                + json.dumps({"type": "citations", "items": citations}, ensure_ascii=False)
+                + "\n\n"
+            )
+            yield (
+                "data: "
+                + json.dumps(
+                    {"type": "done", "conversation_id": str(conversation.id)},
+                    ensure_ascii=False,
+                )
                 + "\n\n"
             )
 
@@ -250,7 +282,9 @@ async def get_conversation(
     current_user: User = Depends(require_permission(KB_READ)),
 ) -> Conversation:
     result = await db.execute(
-        select(Conversation).where(
+        select(Conversation)
+        .options(selectinload(Conversation.messages))
+        .where(
             Conversation.id == conv_id,
             Conversation.user_id == current_user.id,
         )
@@ -276,6 +310,14 @@ async def delete_conversation(
     conv = result.scalar_one_or_none()
     if not conv:
         raise not_found("Conversation not found")
+    # Delete messages first (CASCADE may not work in SQLite without FK pragma)
+    messages = (
+        (await db.execute(select(Message).where(Message.conversation_id == conv_id)))
+        .scalars()
+        .all()
+    )
+    for msg in messages:
+        await db.delete(msg)
     await db.delete(conv)
     await db.commit()
 
