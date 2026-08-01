@@ -26,6 +26,7 @@ MODEL_MANAGE = "model:manage"
 AUDIT_READ = "audit:read"
 AUDIT_EXPORT = "audit:export"
 ANALYTICS_READ = "analytics:read"
+API_KEY_MANAGE = "api-key:manage"
 
 PERMISSION_CATALOG: tuple[tuple[str, str], ...] = (
     (USER_READ, "View users"),
@@ -52,6 +53,7 @@ PERMISSION_CATALOG: tuple[tuple[str, str], ...] = (
     (AUDIT_READ, "View audit logs"),
     (AUDIT_EXPORT, "Export audit logs"),
     (ANALYTICS_READ, "View system usage dashboards"),
+    (API_KEY_MANAGE, "Manage external API keys"),
 )
 
 ALL_PERMISSION_CODES: frozenset[str] = frozenset(code for code, _ in PERMISSION_CATALOG)
@@ -89,6 +91,7 @@ ROLE_DEFINITIONS: dict[str, set[str]] = {
         MODEL_MANAGE,
         AUDIT_READ,
         ANALYTICS_READ,
+        API_KEY_MANAGE,
     },
     ROLE_POWER_USER: {
         USER_READ,
@@ -104,6 +107,7 @@ ROLE_DEFINITIONS: dict[str, set[str]] = {
         MEETING_READ,
         MEETING_WRITE,
         AUDIT_READ,
+        API_KEY_MANAGE,
     },
     ROLE_STAFF: {
         ORG_READ,

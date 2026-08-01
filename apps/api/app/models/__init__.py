@@ -11,6 +11,7 @@ from app.models.document_gen import (
     DocumentTemplate,
     GeneratedDocument,
 )
+from app.models.integration import ApiKey
 from app.models.knowledge import (
     DOC_STATUS_ARCHIVED,
     DOC_STATUS_DRAFT,
@@ -31,6 +32,18 @@ from app.models.knowledge import (
     KnowledgeBaseGroupPermission,
     ProcessingJob,
 )
+from app.models.meeting import (
+    MEETING_STATUS_COMPLETED,
+    MEETING_STATUS_FAILED,
+    RECORDING_STATUS_COMPLETED,
+    RECORDING_STATUS_FAILED,
+    RECORDING_STATUS_PENDING,
+    RECORDING_STATUS_TRANSCRIBING,
+    Meeting,
+    MeetingRecording,
+    MeetingSummary,
+    MeetingTranscript,
+)
 from app.models.organization import Organization
 from app.models.rbac import (
     SCOPE_GLOBAL,
@@ -46,6 +59,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 __all__ = [
+    "ApiKey",
     "AuditLog",
     "Base",
     "Conversation",
@@ -73,10 +87,20 @@ __all__ = [
     "KB_GROUP_PERM_WRITE",
     "KnowledgeBase",
     "KnowledgeBaseGroupPermission",
+    "MEETING_STATUS_COMPLETED",
+    "MEETING_STATUS_FAILED",
+    "Meeting",
+    "MeetingRecording",
+    "MeetingSummary",
+    "MeetingTranscript",
     "Message",
     "Organization",
     "Permission",
     "ProcessingJob",
+    "RECORDING_STATUS_COMPLETED",
+    "RECORDING_STATUS_FAILED",
+    "RECORDING_STATUS_PENDING",
+    "RECORDING_STATUS_TRANSCRIBING",
     "RefreshToken",
     "Role",
     "RolePermission",

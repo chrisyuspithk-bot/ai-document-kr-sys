@@ -11,7 +11,9 @@ from app.api.v1.endpoints import (
     document_gen,
     groups,
     health,
+    integration,
     knowledge_bases,
+    meetings,
     organizations,
     rbac,
     retrieval,
@@ -30,3 +32,6 @@ api_router.include_router(knowledge_bases.router)
 api_router.include_router(retrieval.router)
 api_router.include_router(chat.router)
 api_router.include_router(document_gen.router)
+api_router.include_router(meetings.router)
+api_router.include_router(integration.admin_router)
+api_router.include_router(integration.public_router)
