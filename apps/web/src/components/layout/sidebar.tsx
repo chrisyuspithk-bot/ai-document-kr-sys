@@ -6,12 +6,12 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, MessageSquare, FileText, CalendarCheck,
   BookOpen, Users, Bot, ShieldCheck, Key, BarChart3,
-  Settings, ChevronLeft, ChevronRight,
+  Settings, ChevronLeft, ChevronRight, ChevronDown, FolderCog,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface NavItem {
   href: string;
@@ -40,6 +40,12 @@ const adminNav: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const isAdminActive = adminNav.some((item) => pathname.startsWith(item.href));
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAdminActive) setAdminOpen(true);
+  }, [isAdminActive]);
 
   return (
     <aside className={cn(
@@ -85,28 +91,45 @@ export function Sidebar() {
 
         <Separator className="my-3" />
 
-        <div className="px-3 py-1">
-          {!collapsed && <p className="text-xs font-medium text-muted-foreground mb-1">管理後台</p>}
-        </div>
+        {/* Collapsible admin section */}
+        <button
+          onClick={() => { if (!collapsed) setAdminOpen(!adminOpen); }}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+            isAdminActive ? 'text-accent-foreground' : 'text-muted-foreground',
+            collapsed && 'justify-center px-2'
+          )}
+        >
+          <FolderCog className="h-4 w-4 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">管理後台</span>
+              <ChevronDown className={cn('h-3 w-3 transition-transform', adminOpen && 'rotate-180')} />
+            </>
+          )}
+        </button>
 
-        <nav className="grid gap-1 px-2">
-          {adminNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                pathname.startsWith(item.href)
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground',
-                collapsed && 'justify-center px-2'
-              )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          ))}
-        </nav>
+        {(adminOpen || collapsed) && (
+          <nav className="grid gap-1 px-2">
+            {adminNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                  pathname.startsWith(item.href)
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground',
+                  collapsed && 'justify-center px-2',
+                  !collapsed && 'pl-8'
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            ))}
+          </nav>
+        )}
       </ScrollArea>
 
       <div className="border-t p-2">
