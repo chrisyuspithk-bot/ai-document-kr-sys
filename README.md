@@ -81,7 +81,7 @@ uv run ruff format --check app tests
 | C — Knowledge Base & Documents | pending |
 | D — RAG & Answer Generation | pending |
 | E — Document Generation | pending |
-| F — Speech-to-Text & Meetings | pending (mock STT provider wired) |
+| F — Speech-to-Text & Meetings | in progress — **OpenRouter ASR provider live** (verified), mock for dev; meeting endpoints pending |
 | G — Workflow Automation | pending (Dify as external engine) |
 | H — Integration & API Layer | foundation in place |
 

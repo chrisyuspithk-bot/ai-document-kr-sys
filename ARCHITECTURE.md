@@ -36,10 +36,11 @@ A secure, multi-tenant-capable, AI-powered internal platform that lets authorize
 | D-05 | **Workflow engine = Dify** (self-hosted, open-source) | Dify is our visual workflow / AI orchestration engine, integrated via its Service API. Our FastAPI backend remains the security & governance boundary. Dify is **not** used for core RAG/chat (confirmed). |
 | D-06 | **Auth = local provider now, OIDC-ready** | Build against the local identity provider (username/password + JWT) immediately; Microsoft Entra OIDC wired via config (no dev block). |
 | D-07 | **UI language = zh-Hant default, en toggle** | Confirmed. |
-| D-08 | **LLM keys:** DeepSeek key available (env); **Qwen ASR key later** | DeepSeek integrated behind config now; STT implemented behind `ASRProvider` abstraction with a mock until the Qwen ASR key arrives. |
+| D-08 | **LLM keys:** DeepSeek key available (env); **OpenRouter key provided** | DeepSeek integrated behind config now. STT first via **OpenRouter** (audio-capable model, e.g. `mistralai/voxtral-small-24b-2507`); **Qwen ASR (DashScope)** becomes primary when its key arrives. |
+| D-09 | **STT = OpenRouter first** | User chose OpenRouter for ASR. Note: **Qwen text models on OpenRouter (e.g. `qwen3.7-flash`) do not accept audio input** (HTTP 404) — a verified audio-capable model is the default; model is configurable via `AIDG_OPENROUTER_ASR_MODEL`. |
 
 **Implication of D-03/D-04/D-05:** the "self-hosted model nodes (vLLM)" idea is dropped.
-All model traffic goes to managed APIs (DeepSeek, Alibaba Cloud, optionally Azure Speech as STT fallback).
+All model traffic goes to managed APIs (DeepSeek, OpenRouter, Alibaba Cloud, optionally Azure Speech as STT fallback).
 → Data-residency & zero-training-terms must be confirmed with each provider (see §12).
 
 ---
@@ -52,7 +53,7 @@ All model traffic goes to managed APIs (DeepSeek, Alibaba Cloud, optionally Azur
 | ADR-02 | **PostgreSQL 16 + pgvector + pg_trgm** as the primary store (relational + vectors) | One database: transactional data, RBAC, audit, and embeddings. pgvector HNSW + pg_trgm enable hybrid search in-place. Vector store abstracted behind an interface. |
 | ADR-03 | **Custom retrieval pipeline** (not a black-box RAG framework) | Full control over chunking, metadata, permission-scoped filtering, citation granularity, and audit. This stays in OUR platform even though Dify owns workflows. |
 | ADR-04 | **LLM provider abstraction layer** (OpenAI-compatible protocol) | DeepSeek, Qwen (DashScope), and others expose OpenAI-compatible APIs. One adapter serves all providers; models are DB-registered and config-driven. No vendor lock-in. |
-| ADR-05 | **All AI via managed APIs (no self-hosted models)** | No GPU on premise (D-03). Embeddings = Jina AI; rerank = Jina reranker (same key/endpoint family); STT = Qwen ASR API primary (key TBD, mocked until then); LLMs = DeepSeek per priority list. |
+| ADR-05 | **All AI via managed APIs (no self-hosted models)** | No GPU on premise (D-03). Embeddings = Jina AI; rerank = Jina reranker (same key/endpoint family); STT = OpenRouter audio model first (key provided), Qwen ASR API primary later; LLMs = DeepSeek per priority list. |
 | ADR-06 | **Dify (self-hosted) as the workflow/AI-orchestration engine; our backend stays the governance boundary** | Visual, low-code workflow building (Module G) comes out of the box. Identity, RBAC, audit, approvals, and domain actions (generate doc, send for approval) remain in our platform; Dify is called through its Service API and reached through our permission-checked endpoints. A thin adapter maps our approval tasks to Dify workflow segments (HITL). |
 | ADR-07 | **SSE (Server-Sent Events)** for chat/generation streaming | Simpler than WebSockets, proxy/ingress-friendly, one-directional — all streaming LLM output needs. |
 | ADR-08 | **S3-compatible object storage (Alibaba OSS in prod; MinIO in dev)** | Portable across OSS/Azure Blob/S3. Bytes stay out of the database. |
@@ -138,8 +139,8 @@ All model traffic goes to managed APIs (DeepSeek, Alibaba Cloud, optionally Azur
 | Auth | **NextAuth v5 + Microsoft Entra ID (OIDC)**; local provider for dev | Microsoft-first SSO + MFA via Conditional Access. |
 | LLM orchestration | **LangGraph + custom retrieval pipeline** (our platform) | RAG/generation stay in-house for audit, permission scoping, citations. |
 | Workflow | **Dify (self-hosted)** via Service API + thin adapter | Visual low-code workflow builder (Module G) with our governance at the edge. |
-| Embeddings / rerank | **Qwen embedding API + Alibaba GTE rerank** (DashScope) | No GPU; strong zh-Hant/en/mixed quality. |
-| STT | **Qwen/Paraformer ASR API** primary · **Azure Speech** fallback · diarization | Cantonese + zh-Hant + EN + mixed; both are managed APIs (no GPU). |
+| Embeddings / rerank | **Jina AI `jina-embeddings-v3`** (1024 dims, zh-Hant/en/mixed) · **Jina reranker** for rerank | No GPU; client-provided key; configurable endpoint (D-04). |
+| STT | **OpenRouter audio model** first (e.g. `mistralai/voxtral-small-24b-2507`) · **Qwen ASR (DashScope)** primary when key arrives · **Azure Speech** fallback | Cantonese + zh-Hant + EN + mixed; all managed APIs (no GPU). |
 | Testing | pytest + httpx (API) · Vitest + Playwright (web) | Unit + integration + E2E for critical paths. |
 | Observability | OpenTelemetry → Prometheus + Grafana · Loki · Sentry | Dashboards, health, audit. |
 | Infra | Docker Compose (dev) · **Alibaba ACK K8s + Terraform (HK)** · GitHub Actions | Reproducible, portable, HK-region. |
@@ -156,7 +157,7 @@ All model traffic goes to managed APIs (DeepSeek, Alibaba Cloud, optionally Azur
 | C. Knowledge Base & Processing | `knowledge` domain + `ingestion` worker: parsers (PDF/Word/Excel/PPT/TXT/HTML/image), OCR, layout/table extraction, chunking, metadata, versioning, re-index, bulk import. |
 | D. RAG Engine | `retrieval` + `chat` domains: hybrid search, rerank, groundedness, confidence, citations, answer-format control, full retrieval/generation audit. |
 | E. Document Generation | `generation` domain + workers: template + sample style transfer, preview→revise→regenerate→approve→export (Word/PDF). |
-| F. STT & Meeting Intelligence | `meeting` domain + `stt` worker: ASR (Qwen/Paraformer API, Azure Speech fallback), diarization, summary/decisions/action items, meeting folders, KB linkage. |
+| F. STT & Meeting Intelligence | `meeting` domain + `stt` worker: ASR (OpenRouter audio model first; Qwen ASR/DashScope primary when key arrives; Azure Speech fallback), diarization, summary/decisions/action items, meeting folders, KB linkage. |
 | G. Workflow Automation | **Dify** (self-hosted) + our `workflow` domain/adapter: visual builder, multi-level approval, human-in-the-loop, triggers (upload/generation/schedule/API), notifications, escalation, execution history. |
 | H. Integration & API | `integrations` domain: API keys, M365/SharePoint/OneDrive readiness, intranet connectors, permission-enforced data access paths. |
 
@@ -303,14 +304,15 @@ interfaces. Models are DB-registered rows; switching providers = config + key, n
 
 ### Decisions confirmed (v0.3)
 1. **Auth:** build with local provider now + OIDC-ready config. ✅
-2. **LLM keys:** DeepSeek key available (env). **Embeddings:** Jina AI key provided (`jina-embeddings-v3`). **STT:** Qwen ASR — key to be provided later (mocked behind `ASRProvider` until then). ✅
+2. **LLM keys:** DeepSeek key available (env). **Embeddings:** Jina AI key provided (`jina-embeddings-v3`). **STT:** **OpenRouter key provided** — audio-capable model wired now; Qwen ASR (DashScope) becomes primary when its key arrives. ✅
 3. **UI language default:** zh-Hant default with English toggle. ✅
 4. **Dify scope:** workflows only — **not** used for core RAG/chat (our pipeline owns RAG). ✅
 5. **STT fallback:** Whisper needs GPU → Azure Speech as cloud fallback (config-ready). ✅
+6. **OpenRouter ASR model:** Qwen text models on OpenRouter reject audio (HTTP 404); default verified audio model is `mistralai/voxtral-small-24b-2507` (configurable via `AIDG_OPENROUTER_ASR_MODEL`). ✅
 
 ### Remaining risks & notes
-- **R-1 Data residency:** embeddings now via Jina (configurable endpoint). DeepSeek + Qwen ASR still process content off-site — confirm acceptable region/endpoint + retention terms with YOT.
-- **R-2 Zero-training terms:** every provider (DeepSeek, Jina, Alibaba, Azure) must confirm zero-data-retention & no-training-for-third-party terms. We keep a compliance register per provider/model.
+- **R-1 Data residency:** embeddings now via Jina (configurable endpoint). DeepSeek + OpenRouter ASR still process content off-site — confirm acceptable region/endpoint + retention terms with YOT.
+- **R-2 Zero-training terms:** every provider (DeepSeek, Jina, OpenRouter, Alibaba, Azure) must confirm zero-data-retention & no-training-for-third-party terms. We keep a compliance register per provider/model.
 - **R-3 Dependency on Dify:** Dify self-hosting is CPU-OK, but brings its own Postgres/Redis/vector store and upgrade cycle. Isolated behind our adapter.
 - **R-4 Cost monitoring:** managed API costs need per-model quotas, dashboards, and alerting (covered by Epic 7).
-- **R-5 Qwen ASR key pending:** STT can be developed/tested against the mock now; real Cantonese transcription will be validated when the key arrives.
+- **R-5 Qwen ASR key pending:** STT now runs via OpenRouter (verified live). Qwen ASR (DashScope) remains the long-term primary for Cantonese quality; validate when its key arrives. Note that a pure-tone/no-speech clip can trigger model filler text — meeting pipeline should add VAD/no-speech detection (Epic 6).

@@ -60,7 +60,13 @@ class Settings(BaseSettings):
     jina_embedding_base_url: str = "https://api.jina.ai/v1"
 
     # --- Speech-to-text ---
-    stt_provider: str = "mock"  # qwen_asr | azure | mock
+    # openrouter (default) | mock | qwen_asr
+    stt_provider: str = "openrouter"
+    openrouter_api_key: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    # Audio-capable model. Qwen text models (e.g. qwen3.7-flash) reject audio
+    # input on OpenRouter (HTTP 404), so the default is a verified audio model.
+    openrouter_asr_model: str = "mistralai/voxtral-small-24b-2507"
     qwen_asr_api_key: str | None = None
     qwen_asr_base_url: str | None = None
     azure_speech_key: str | None = None
