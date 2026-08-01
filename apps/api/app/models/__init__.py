@@ -2,6 +2,7 @@
 
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.conversation import Conversation, Message
 from app.models.knowledge import (
     DOC_STATUS_ARCHIVED,
     DOC_STATUS_DRAFT,
@@ -39,6 +40,7 @@ from app.models.user import User
 __all__ = [
     "AuditLog",
     "Base",
+    "Conversation",
     "DOC_STATUS_ARCHIVED",
     "DOC_STATUS_DRAFT",
     "DOC_STATUS_FAILED",
@@ -57,6 +59,7 @@ __all__ = [
     "KB_GROUP_PERM_WRITE",
     "KnowledgeBase",
     "KnowledgeBaseGroupPermission",
+    "Message",
     "Organization",
     "Permission",
     "ProcessingJob",
