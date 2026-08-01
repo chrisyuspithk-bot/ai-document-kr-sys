@@ -17,9 +17,11 @@ export default async function middleware(request: NextRequest) {
     locale = acceptLang.includes('zh') ? 'zh' : 'zh';
   }
 
+  const isSecure = request.url.startsWith('https://');
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    secureCookie: isSecure,
   });
 
   const isPublic = publicPaths.some((p) => pathname.startsWith(p));
