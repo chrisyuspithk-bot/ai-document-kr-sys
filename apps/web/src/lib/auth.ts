@@ -1,45 +1,53 @@
 import NextAuth from 'next-auth';
-import Credentials from 'next-auth/providers/credentials';
 import type { User } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+const credentialsProvider = {
+  id: 'credentials',
+  name: 'credentials',
+  type: 'credentials' as const,
+  credentials: {
+    username: { label: 'Username', type: 'text' },
+    password: { label: 'Password', type: 'password' },
+  },
+  authorize: async (credentials: Record<string, string>) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: credentials.username,
+          password: credentials.password,
+        }),
+      });
+      if (!res.ok) return null;
+      const { access_token, refresh_token } = await res.json();
+
+      const meRes = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      if (!meRes.ok) return null;
+      const user = await meRes.json();
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.full_name || user.username,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        roles: user.roles || [],
+        permissions: user.permissions || [],
+        orgId: user.org_id,
+      };
+    } catch {
+      return null;
+    }
+  },
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
-    Credentials({
-      name: 'credentials',
-      credentials: {
-        username: { label: 'Username', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        try {
-          const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: credentials.username,
-              password: credentials.password,
-            }),
-          });
-          if (!res.ok) return null;
-          const data = await res.json();
-          return {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.display_name,
-            accessToken: data.access_token,
-            refreshToken: data.refresh_token,
-            roles: data.user.roles,
-            permissions: data.user.permissions,
-            orgId: data.user.org_id,
-          };
-        } catch {
-          return null;
-        }
-      },
-    }),
-  ],
+  providers: [credentialsProvider as any],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

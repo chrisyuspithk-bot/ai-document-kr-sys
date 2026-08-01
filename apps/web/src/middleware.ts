@@ -1,30 +1,20 @@
-import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { locales } from '@/i18n/request';
 
-const intlMiddleware = createMiddleware({
-  locales,
-  defaultLocale: 'zh',
-  localeDetection: true,
-});
-
 const publicPaths = ['/login'];
-const staticPaths = ["/_next", "/static", "/favicon.ico"];
 
-export async function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Handle i18n first
-  const intlResponse = intlMiddleware(request);
-  if (intlResponse) return intlResponse;
-
-  if (staticPaths.some((p) => pathname.startsWith(p))) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/_next")) {
-    return NextResponse.next();
+  const acceptLang = request.headers.get('accept-language') || '';
+  let locale = request.cookies.get('NEXT_LOCALE')?.value;
+  if (!locale || !locales.includes(locale as any)) {
+    locale = acceptLang.includes('zh') ? 'zh' : 'zh';
   }
 
   const token = await getToken({
@@ -32,23 +22,27 @@ export async function middleware(request: NextRequest) {
     secret: process.env.AUTH_SECRET,
   });
 
-  // Check public paths against the pathname without locale prefix
-  const pathWithoutLocale = pathname.replace(/^\/(zh|en)/, '') || '/';
-  const isPublic = publicPaths.some((p) => pathWithoutLocale.startsWith(p));
+  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
 
   if (!token && !isPublic) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("callbackUrl", pathname);
+    const url = new URL('/login', request.url);
+    url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
   }
 
   if (token && isPublic) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.cookies.set('NEXT_LOCALE', locale, {
+    path: '/',
+    maxAge: 31536000,
+    sameSite: 'lax',
+  });
+  return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

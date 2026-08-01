@@ -1,11 +1,15 @@
 import { getRequestConfig } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 export const locales = ['zh', 'en'] as const;
 export type Locale = (typeof locales)[number];
 
-export default getRequestConfig(async ({ requestLocale }) => {
-  const locale = await requestLocale;
-  if (!locales.includes(locale as Locale)) notFound();
-  return { locale, messages: (await import(`./messages/${locale}.json`)).default };
+export default getRequestConfig(async () => {
+  const cookieStore = await cookies();
+  let locale = cookieStore.get('NEXT_LOCALE')?.value || 'zh';
+  if (!locales.includes(locale as Locale)) locale = 'zh';
+  return {
+    locale,
+    messages: (await import(`./messages/${locale}.json`)).default,
+  };
 });
