@@ -5,17 +5,17 @@ Revises: 8418ca16827f
 Create Date: 2026-08-01 03:29:40.397303
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector as PGVECTOR
 
+from alembic import op
 
 revision: str = '3f8c2625f16e'
-down_revision: Union[str, None] = '8418ca16827f'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = '8418ca16827f'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
