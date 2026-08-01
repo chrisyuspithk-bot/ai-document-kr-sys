@@ -62,7 +62,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const accessToken = token.accessToken as string | undefined;
       if (accessToken) {
         try {
-          const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+          const parts = accessToken.split('.');
+          if (parts.length !== 3) return token;
+          const payload = JSON.parse(Buffer.from(parts[1]!, 'base64').toString());
           const now = Math.floor(Date.now() / 1000);
           if (payload.exp && now >= payload.exp - 60) {
             const refreshToken = token.refreshToken as string | undefined;
