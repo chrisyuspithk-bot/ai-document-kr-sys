@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  api-lint-test:
+    name: API — lint & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint
+        run: uv run ruff check app tests
+
+      - name: Format check
+        run: uv run ruff format --check app tests
+
+      - name: Tests
+        run: uv run pytest -q
+
+  # NOTE: web-build job will be added when Module A (Next.js frontend) lands.
+  # Keep CI green: only reference apps that exist on the branch.
+  web-build:
+    name: Web — build (module A placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Web app lands with Module A — skipped for now"
