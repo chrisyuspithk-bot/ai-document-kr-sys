@@ -1,15 +1,15 @@
 # AIDG & KR System
 
-**AI-Enabled Document Generation & Knowledge Retrieval System** 
+**AI-Enabled Document Generation & Knowledge Retrieval System**
 
-A secure, multi-tenant-capable, AI-powered internal platform that :
+A secure, multi-tenant-capable, AI-powered internal platform for Yan Oi Tong Social Services Division.
 
 1. Query internal knowledge with natural language (RAG)
 2. Generate business documents (proposals, reports, meeting minutes, approvals)
 3. Transcribe and organize meeting recordings (Cantonese + Traditional Chinese + English)
 4. Manage knowledge bases, AI assistants, workflows, and permissions from an admin console
 5. Review & approve AI outputs (human-in-the-loop)
-6. Integrate with the intranet and / or future systems via APIs
+6. Integrate with the intranet and/or future systems via APIs
 
 Primary UI language: **Traditional Chinese (zh-Hant)** with full English support.
 
@@ -18,7 +18,7 @@ Primary UI language: **Traditional Chinese (zh-Hant)** with full English support
 ```
 apps/
   api/    FastAPI + SQLAlchemy 2.x (async) + Alembic + PostgreSQL/pgvector
-  web/    Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui   [Module A — pending]
+  web/    Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui
 docs/
   ARCHITECTURE.md   Living architecture record (ADRs, decisions, model strategy)
   API.md            API contracts and endpoint reference
@@ -48,15 +48,28 @@ uv run uvicorn app.main:app --reload --port 8000
 API docs: http://localhost:8000/docs (dev only).
 Health checks: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (db + redis).
 
-### Demo users (after seeding)
+## Quick start (frontend)
 
-| Username   | Password       | Role         |
-|------------|----------------|--------------|
-| `admin`    | `admin1234!`   | system_admin |
-| `poweruser`| `admin1234!`   | power_user   |
-| `staff`    | `admin1234!`   | staff        |
-| `approver` | `admin1234!`   | approver     |
-| `auditor`  | `admin1234!`   | auditor      |
+Prerequisites: Node.js 20+, npm.
+
+```bash
+cd apps/web
+cp .env.example .env.local       # configure NEXT_PUBLIC_API_URL (default: http://localhost:8000)
+npm install
+npm run dev                       # http://localhost:3000
+```
+
+Build: `npm run build` (16 routes, zero errors).
+
+## Demo users (after seeding)
+
+| Username    | Password       | Role         |
+|-------------|----------------|--------------|
+| `admin`     | `admin1234!`   | system_admin |
+| `poweruser` | `admin1234!`   | power_user   |
+| `staff`     | `admin1234!`   | staff        |
+| `approver`  | `admin1234!`   | approver     |
+| `auditor`   | `admin1234!`   | auditor      |
 
 > Override the default password via `AIDG_SEED_ADMIN_PASSWORD` and rotate before any
 > non-local deployment.
@@ -64,30 +77,28 @@ Health checks: `GET /api/v1/healthz` (liveness), `GET /api/v1/readyz` (db + redi
 ## Testing & linting
 
 ```bash
+# Backend
 cd apps/api
-uv run pytest -q          # 64 tests: auth, RBAC, users, groups, orgs, audit, KBs, documents, retrieval, STT
+uv run pytest -q                     # 146 tests
 uv run ruff check app tests
 uv run ruff format --check app tests
+
+# Frontend
+cd apps/web
+npm run build                        # 16 routes, verified
 ```
 
-Live smoke test (requires Postgres/pgvector up-to-date, mock embeddings by default):
+## Epic implementation status
 
-```bash
-cd apps/api
-uv run python scripts/smoke_knowledge.py
-```
-
-## Module implementation status
-
-| Module | Status |
-|--------|--------|
-| A — Unified AI Portal (frontend) | pending (next epic) |
-| B — Backend Management Platform | in progress — auth/RBAC/users/groups/orgs/audit APIs done |
-| C — Knowledge Base & Documents | **done (Epic 2)** — KBs, document upload/versioning, parsing (PDF/Word/Excel/PPT/TXT/HTML/CSV), chunking, embeddings, indexing pipeline, approval |
-| D — RAG & Answer Generation | in progress — hybrid retrieval (pgvector + pg_trgm, RRF) done; LLM answer generation pending |
-| E — Document Generation | pending |
-| F — Speech-to-Text & Meetings | in progress — **OpenRouter ASR provider live** (verified), mock for dev; meeting endpoints pending |
-| G — Workflow Automation | pending (Dify as external engine) |
-| H — Integration & API Layer | foundation in place |
+| Epic | Module | Status |
+|------|--------|--------|
+| 0/1  | Foundation (auth, RBAC, orgs, audit, multi-tenancy) | ✅ done |
+| 2    | Knowledge Base & Document Processing | ✅ done |
+| 3    | RAG & Answer Generation Engine | ✅ done |
+| 4    | Document Generation Engine | ✅ done |
+| 5    | Speech-to-Text & Meeting Intelligence | ✅ done |
+| 7    | Integration & API Layer | ✅ done |
+| 8    | Frontend Portal (Modules A & B) | ✅ done |
+| 6    | Workflow Automation | pending |
 
 See `docs/ARCHITECTURE.md` for the full architecture and decisions.
