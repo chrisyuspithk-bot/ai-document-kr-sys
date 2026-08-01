@@ -39,20 +39,20 @@ async def seed(session: AsyncSession) -> None:
     root = root_result.scalars().first()
     if root is None:
         root = Organization(
-            name="Yan Oi Tong Limited (YOT)",
-            code="YOT",
+            name="組織總部",
+            code="ORG-ROOT",
             org_type=ORG_TYPE_ROOT,
         )
         session.add(root)
         await session.flush()
-        logger.info("Created root organization 'YOT'")
+        logger.info("Created root organization")
 
-    hq_result = await session.execute(select(Organization).where(Organization.code == "YOT-HQ"))
+    hq_result = await session.execute(select(Organization).where(Organization.code == "ORG-HQ"))
     hq = hq_result.scalars().first()
     if hq is None:
         hq = Organization(
-            name="YOT 總部 (Headquarters)",
-            code="YOT-HQ",
+            name="總部",
+            code="ORG-HQ",
             org_type=ORG_TYPE_SERVICE_UNIT,
             parent_id=root.id,
         )
