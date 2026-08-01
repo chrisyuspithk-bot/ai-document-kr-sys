@@ -2,7 +2,7 @@
 
 **AI-Enabled Document Generation & Knowledge Retrieval System** 
 
-A secure, multi-tenant-capable, AI-powered internal platform that lets YOT staff:
+A secure, multi-tenant-capable, AI-powered internal platform that :
 
 1. Query internal knowledge with natural language (RAG)
 2. Generate business documents (proposals, reports, meeting minutes, approvals)
