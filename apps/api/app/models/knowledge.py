@@ -21,6 +21,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin
 from app.services.vector_type import Vector
 
+KB_GROUP_PERM_READ = "read"
+KB_GROUP_PERM_WRITE = "write"
+KB_GROUP_PERM_APPROVE = "approve"
+
 DOC_STATUS_DRAFT = "draft"
 DOC_STATUS_PROCESSING = "processing"
 DOC_STATUS_INDEXED = "indexed"
@@ -130,3 +134,24 @@ class ProcessingJob(TimestampMixin, Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class KnowledgeBaseGroupPermission(TimestampMixin, Base):
+    """Which groups can access a KB, and at what permission level.
+
+    When a KB has **no** group permissions it is visible to every member of its
+    organisation. As soon as one row exists the KB becomes *restricted* — only
+    users who belong to at least one of the listed groups can see/search it.
+    """
+
+    __tablename__ = "knowledge_base_group_permissions"
+
+    knowledge_base_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_bases.id", ondelete="CASCADE"), primary_key=True
+    )
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True
+    )
+    permission_level: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=KB_GROUP_PERM_READ
+    )

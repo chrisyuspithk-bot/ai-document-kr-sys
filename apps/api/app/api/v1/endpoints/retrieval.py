@@ -113,4 +113,42 @@ async def _visible_kb_ids(db: AsyncSession, user: User) -> list[uuid.UUID]:
             KnowledgeBase.org_id == user.org_id, KnowledgeBase.is_active.is_(True)
         )
     )
-    return list(result.scalars().all())
+    kb_ids = list(result.scalars().all())
+    return await _filter_kb_ids_by_group_membership(db, user, kb_ids)
+
+
+async def _user_group_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    """Group IDs the user belongs to inside their organisation."""
+    from app.models.rbac import UserGroup
+
+    rows = await db.execute(select(UserGroup.group_id).where(UserGroup.user_id == user.id))
+    return set(rows.scalars().all())
+
+
+async def _filter_kb_ids_by_group_membership(
+    db: AsyncSession, user: User, kb_ids: list[uuid.UUID]
+) -> list[uuid.UUID]:
+    """Drop KBs that are group-restricted and the user is not a member of."""
+    from app.models.knowledge import (
+        KnowledgeBaseGroupPermission,
+    )
+
+    user_groups = await _user_group_ids(db, user)
+    if not kb_ids:
+        return []
+
+    rows = await db.execute(
+        select(
+            KnowledgeBaseGroupPermission.knowledge_base_id,
+            KnowledgeBaseGroupPermission.group_id,
+        ).where(KnowledgeBaseGroupPermission.knowledge_base_id.in_(kb_ids))
+    )
+    perms_by_kb: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for kb_id, group_id in rows.all():
+        perms_by_kb.setdefault(kb_id, set()).add(group_id)
+
+    return [
+        kb_id
+        for kb_id in kb_ids
+        if kb_id not in perms_by_kb or bool(perms_by_kb[kb_id] & user_groups)
+    ]

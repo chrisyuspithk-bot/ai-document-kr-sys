@@ -213,3 +213,192 @@ async def test_search_audited(client: httpx.AsyncClient) -> None:
     actions = [entry["action"] for entry in resp.json()["items"]]
     assert "retrieval.search" in actions
     assert "document.upload" in actions
+
+
+# ──────────────────────────── Group-based access ────────────────────────────
+
+
+async def _create_group(
+    client: httpx.AsyncClient,
+    admin_headers: dict,
+    name: str,
+    *,
+    org_id: str | None = None,
+) -> dict:
+    body: dict[str, object] = {"name": name}
+    if org_id:
+        body["org_id"] = org_id
+    resp = await client.post("/api/v1/groups", json=body, headers=admin_headers)
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def _add_user_to_group(
+    client: httpx.AsyncClient,
+    admin_headers: dict,
+    group_id: str,
+    user_id: str,
+) -> None:
+    resp = await client.post(
+        f"/api/v1/groups/{group_id}/members",
+        json={"user_id": user_id},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 204, resp.text
+
+
+async def _add_group_permission(
+    client: httpx.AsyncClient,
+    admin_headers: dict,
+    kb_id: str,
+    group_id: str,
+    level: str = "read",
+) -> None:
+    resp = await client.post(
+        f"/api/v1/knowledge-bases/{kb_id}/groups",
+        json={"group_id": group_id, "permission_level": level},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+
+async def test_group_restricted_kb_visibility(
+    client: httpx.AsyncClient,
+) -> None:
+    """Staff in group A sees kb_a but not kb_b; power user sees neither."""
+    admin = await _login(client, ADMIN)
+
+    # Create two groups
+    ga = await _create_group(client, admin, "測試群組A")
+    gb = await _create_group(client, admin, "測試群組B")
+
+    # Assign staff to group A
+    me = await client.get("/api/v1/auth/me", headers=await _login(client, STAFF))
+    await _add_user_to_group(client, admin, ga["id"], me.json()["id"])
+
+    # Create two KBs
+    kba = await _create_kb(client, admin, "群組A專用庫")
+    kbb = await _create_kb(client, admin, "群組B專用庫")
+    kbc = await _create_kb(client, admin, "全域公開庫")  # no group restriction
+
+    # Restrict kba -> group A, kbb -> group B
+    await _add_group_permission(client, admin, kba["id"], ga["id"])
+    await _add_group_permission(client, admin, kbb["id"], gb["id"])
+
+    # Staff in group A: sees kba and kbc, NOT kbb
+    staff = await _login(client, STAFF)
+    list_resp = await client.get("/api/v1/knowledge-bases", headers=staff)
+    assert list_resp.status_code == 200
+    ids = {kb["id"] for kb in list_resp.json()}
+    assert kba["id"] in ids
+    assert kbc["id"] in ids
+    assert kbb["id"] not in ids
+
+    # Staff can GET kba but not kbb
+    r1 = await client.get(f"/api/v1/knowledge-bases/{kba['id']}", headers=staff)
+    assert r1.status_code == 200
+    r2 = await client.get(f"/api/v1/knowledge-bases/{kbb['id']}", headers=staff)
+    assert r2.status_code == 403
+
+    # Power user (not in any group): sees only the open KB
+    power = await _login(client, POWER)
+    list_resp = await client.get("/api/v1/knowledge-bases", headers=power)
+    ids_power = {kb["id"] for kb in list_resp.json()}
+    assert kbc["id"] in ids_power
+    assert kba["id"] not in ids_power
+    assert kbb["id"] not in ids_power
+
+    # Admin (superuser): sees all three
+    list_resp = await client.get("/api/v1/knowledge-bases", headers=admin)
+    ids_admin = {kb["id"] for kb in list_resp.json()}
+    assert ids_admin >= {kba["id"], kbb["id"], kbc["id"]}
+
+
+async def test_group_permission_endpoints_crud(client: httpx.AsyncClient) -> None:
+    admin = await _login(client, ADMIN)
+    g = await _create_group(client, admin, "權限管理測試群組")
+    kb = await _create_kb(client, admin, "權限管理測試庫")
+
+    # Initially empty
+    list_resp = await client.get(f"/api/v1/knowledge-bases/{kb['id']}/groups", headers=admin)
+    assert list_resp.status_code == 200
+    assert list_resp.json() == []
+
+    # Add
+    add_resp = await client.post(
+        f"/api/v1/knowledge-bases/{kb['id']}/groups",
+        json={"group_id": g["id"], "permission_level": "write"},
+        headers=admin,
+    )
+    assert add_resp.status_code == 201
+    assert add_resp.json()["permission_level"] == "write"
+
+    # List now contains it
+    list_resp = await client.get(f"/api/v1/knowledge-bases/{kb['id']}/groups", headers=admin)
+    assert len(list_resp.json()) == 1
+    assert list_resp.json()[0]["permission_level"] == "write"
+
+    # Duplicate (conflict on PK — should return clear error)
+    dup = await client.post(
+        f"/api/v1/knowledge-bases/{kb['id']}/groups",
+        json={"group_id": g["id"], "permission_level": "read"},
+        headers=admin,
+    )
+    assert dup.status_code >= 400
+
+    # Remove
+    del_resp = await client.delete(
+        f"/api/v1/knowledge-bases/{kb['id']}/groups/{g['id']}", headers=admin
+    )
+    assert del_resp.status_code == 204
+
+    # Gone
+    list_resp = await client.get(f"/api/v1/knowledge-bases/{kb['id']}/groups", headers=admin)
+    assert list_resp.json() == []
+
+
+async def test_group_restricted_retrieval(client: httpx.AsyncClient) -> None:
+    """Search skips group-restricted KBs the user doesn't belong to."""
+    admin = await _login(client, ADMIN)
+
+    g = await _create_group(client, admin, "檢索測試群組")
+    me = await client.get("/api/v1/auth/me", headers=await _login(client, STAFF))
+    await _add_user_to_group(client, admin, g["id"], me.json()["id"])
+
+    kba = await _create_kb(client, admin, "檢索-群組限制庫")
+    kbb = await _create_kb(client, admin, "檢索-公開庫")
+
+    await _add_group_permission(client, admin, kba["id"], g["id"])
+
+    # Upload doc to both and process
+    for kb_id in (kba["id"], kbb["id"]):
+        await client.post(
+            f"/api/v1/knowledge-bases/{kb_id}/documents",
+            files={"file": ("x.txt", SAMPLE_TXT, "text/plain")},
+            data={"process_sync": "true"},
+            headers=admin,
+        )
+
+    # Staff (in group A) searches all — gets results from both kba and kbb
+    staff = await _login(client, STAFF)
+    resp = await client.post(
+        "/api/v1/retrieval/search",
+        json={"query": "長者", "top_k": 10},
+        headers=staff,
+    )
+    assert resp.status_code == 200
+    results = resp.json()
+    seen_kbs = {r["kb_id"] for r in results}
+    assert kba["id"] in seen_kbs
+    assert kbb["id"] in seen_kbs
+
+    # Power user (no groups) searches all — only sees kbb
+    power = await _login(client, POWER)
+    resp = await client.post(
+        "/api/v1/retrieval/search",
+        json={"query": "長者", "top_k": 10},
+        headers=power,
+    )
+    power_kbs = {r["kb_id"] for r in resp.json()}
+    assert kbb["id"] in power_kbs
+    assert kba["id"] not in power_kbs

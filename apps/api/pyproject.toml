@@ -23,6 +23,10 @@ dependencies = [
     "pypdf>=4.0",
     "python-docx>=1.1",
     "beautifulsoup4>=4.12",
+    "pymupdf>=1.24.0",
+    "easyocr>=1.7.0",
+    "openpyxl>=3.1.5",
+    "python-pptx>=1.0.2",
 ]
 
 [project.optional-dependencies]
@@ -57,3 +61,12 @@ ignore = ["B008"]  # FastAPI Depends() in default args is idiomatic
 python_version = "3.12"
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-httpx>=0.36.2",
+    "ruff>=0.16.1",
+]

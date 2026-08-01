@@ -119,3 +119,16 @@ class RetrievalResult(BaseModel):
     score: float
     vector_score: float | None
     keyword_score: float | None
+
+
+class KbGroupPermissionRequest(BaseModel):
+    group_id: uuid.UUID
+    permission_level: str = "read"
+
+
+class KbGroupPermissionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    knowledge_base_id: uuid.UUID
+    group_id: uuid.UUID
+    permission_level: str
