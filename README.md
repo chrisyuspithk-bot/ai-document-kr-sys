@@ -9,7 +9,7 @@ A secure, multi-tenant-capable, AI-powered internal platform that :
 3. Transcribe and organize meeting recordings (Cantonese + Traditional Chinese + English)
 4. Manage knowledge bases, AI assistants, workflows, and permissions from an admin console
 5. Review & approve AI outputs (human-in-the-loop)
-6. Integrate with the YOT intranet and future systems via APIs
+6. Integrate with the intranet and / or future systems via APIs
 
 Primary UI language: **Traditional Chinese (zh-Hant)** with full English support.
 
