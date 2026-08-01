@@ -10,9 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Loader2, Trash2 } from 'lucide-react';
+import { useApiToken, apiFetchJson } from '@/lib/client-api';
 import { formatDate } from '@/lib/utils';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function AdminKBPage() {
   const [kbs, setKbs] = useState<any[]>([]);
@@ -20,12 +19,12 @@ export default function AdminKBPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || '' : '';
+  const token = useApiToken();
 
   async function fetchKBs() {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/knowledge-bases`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setKbs(await res.json());
+      const data = await apiFetchJson<any[]>('/api/v1/knowledge-bases', token);
+      setKbs(data);
     } catch {}
     setLoading(false);
   }
@@ -33,15 +32,19 @@ export default function AdminKBPage() {
 
   async function handleCreate() {
     if (!name.trim()) return;
-    await fetch(`${API_BASE}/api/v1/knowledge-bases`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name, description }),
-    });
-    setShowCreate(false); setName(''); setDescription(''); fetchKBs();
+    try {
+      await apiFetchJson('/api/v1/knowledge-bases', token, {
+        method: 'POST',
+        body: JSON.stringify({ name, description }),
+      });
+      setShowCreate(false); setName(''); setDescription(''); fetchKBs();
+    } catch {}
   }
 
   async function handleDelete(id: string) {
-    await fetch(`${API_BASE}/api/v1/knowledge-bases/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    try {
+      await apiFetchJson(`/api/v1/knowledge-bases/${id}`, token, { method: 'DELETE' });
+    } catch {}
     fetchKBs();
   }
 

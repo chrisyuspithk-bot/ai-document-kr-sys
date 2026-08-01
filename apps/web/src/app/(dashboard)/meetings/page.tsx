@@ -9,10 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarCheck, Upload, FileAudio, Loader2, Mic, ListChecks, Plus } from 'lucide-react';
+import { CalendarCheck, Upload, FileAudio, Loader2, ListChecks, Plus } from 'lucide-react';
+import { useApiToken, apiFetch, apiFetchJson } from '@/lib/client-api';
 import { formatDate, formatBytes } from '@/lib/utils';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'destructive' }> = {
   pending: { label: '待處理', variant: 'warning' },
@@ -32,13 +31,12 @@ export default function MeetingsPage() {
   const [meetingDate, setMeetingDate] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
-
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || '' : '';
+  const token = useApiToken();
 
   const fetchMeetings = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/meetings`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setMeetings(await res.json());
+      const data = await apiFetchJson<any[]>('/api/v1/meetings', token);
+      setMeetings(data);
     } catch {}
     setLoading(false);
   }, [token]);
@@ -47,44 +45,32 @@ export default function MeetingsPage() {
 
   async function fetchDetail(id: string) {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/meetings/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setSelected(await res.json());
+      const data = await apiFetchJson<any>('/api/v1/meetings/' + id, token);
+      setSelected(data);
     } catch {}
   }
 
   async function handleCreate() {
     if (!title.trim()) return;
     try {
-      const createRes = await fetch(`${API_BASE}/api/v1/meetings`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      const meeting = await apiFetchJson<any>('/api/v1/meetings', token, {
+        method: 'POST',
         body: JSON.stringify({ title, description, folder: folder || undefined, meeting_date: meetingDate || undefined }),
       });
-      if (!createRes.ok) throw new Error('Create failed');
-      const meeting = await createRes.json();
       if (files.length > 0) {
         const formData = new FormData();
         files.forEach((f) => formData.append('files', f));
-        await fetch(`${API_BASE}/api/v1/meetings/${meeting.id}/recordings`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+        const res = await apiFetch(`/api/v1/meetings/${meeting.id}/recordings`, token, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Upload failed');
       }
       setShowCreate(false); setTitle(''); setDescription(''); setFolder(''); setMeetingDate(''); setFiles([]);
       fetchMeetings();
     } catch { setError('建立會議失敗。'); }
   }
 
-  async function handleTranscribe(meetingId: string, recordingId: string) {
-    try {
-      await fetch(`${API_BASE}/api/v1/meetings/${meetingId}/recordings/${recordingId}/transcribe`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchDetail(meetingId); fetchMeetings();
-    } catch {}
-  }
-
   async function handleSummarize(meetingId: string) {
     try {
-      await fetch(`${API_BASE}/api/v1/meetings/${meetingId}/transcript/summarize`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiFetchJson(`/api/v1/meetings/${meetingId}/summarize`, token, { method: 'POST' });
       fetchDetail(meetingId);
     } catch {}
   }
@@ -148,7 +134,6 @@ export default function MeetingsPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant={STATUS_MAP[r.status]?.variant || 'secondary'} className="text-xs">{STATUS_MAP[r.status]?.label || r.status}</Badge>
                         {r.status === 'completed' && <Button size="sm" variant="outline" onClick={() => handleSummarize(selected.meeting.id)}>摘要</Button>}
-                        {(r.status === 'pending' || r.status === 'failed') && <Button size="sm" onClick={() => handleTranscribe(selected.meeting.id, r.id)}><Mic className="mr-1 h-3 w-3" />轉文字</Button>}
                       </div>
                     </div>
                   ))}</CardContent></Card>

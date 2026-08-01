@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles, User, Bot, Loader2, Send, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useApiToken, apiFetchJson } from '@/lib/client-api';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -18,13 +19,18 @@ interface Message {
   citations?: Array<{ document_id: string; document_title: string; chunk_text: string; score: number }> | null;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+interface ChatResponse {
+  answer: string;
+  conversation_id: string;
+  citations?: Array<{ document_id: string; document_title: string; snippet?: string; score: number }>;
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [assistantId, setAssistantId] = useState<string>('');
+  const token = useApiToken();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -36,19 +42,20 @@ export default function ChatPage() {
     setInput('');
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token') || '';
-      const res = await fetch(`${API_BASE}/api/v1/chat`, {
+      const data = await apiFetchJson<ChatResponse>('/api/v1/chat', token, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: userMsg.content, conversation_id: null, assistant_id: assistantId || undefined }),
+        body: JSON.stringify({ query: userMsg.content }),
       });
-      if (!res.ok) throw new Error('Chat error');
-      const data = await res.json();
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.message?.content || data.content || '',
-        citations: data.citations || null,
+        content: data.answer || '',
+        citations: data.citations?.map((c) => ({
+          document_id: c.document_id,
+          document_title: c.document_title,
+          chunk_text: c.snippet || '',
+          score: c.score,
+        })) || null,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {

@@ -6,19 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Loader2 } from 'lucide-react';
+import { useApiToken, apiFetchJson } from '@/lib/client-api';
 import { formatDate } from '@/lib/utils';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || '' : '';
+  const token = useApiToken();
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${API_BASE}/api/v1/users`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() : []).then(setUsers).catch(() => {}).finally(() => setLoading(false));
+    apiFetchJson<any[]>('/api/v1/users', token)
+      .then(setUsers)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [token]);
 
   return (
@@ -28,8 +29,8 @@ export default function AdminUsersPage() {
         <Card><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>用戶名稱</TableHead><TableHead>顯示名稱</TableHead><TableHead>電郵</TableHead><TableHead>角色</TableHead><TableHead>狀態</TableHead><TableHead>建立日期</TableHead></TableRow></TableHeader>
           <TableBody>{users.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">暫無用戶</TableCell></TableRow> :
             users.map((u: any) => (
-              <TableRow key={u.id}><TableCell className="font-medium">{u.username}</TableCell><TableCell>{u.display_name}</TableCell><TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
-                <TableCell><div className="flex gap-1">{u.roles?.map((r: string) => <Badge key={r} variant="secondary" className="text-xs">{r}</Badge>)}</div></TableCell>
+              <TableRow key={u.id}><TableCell className="font-medium">{u.username}</TableCell><TableCell>{u.full_name || u.username}</TableCell><TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
+                <TableCell>{u.is_superuser ? <Badge variant="secondary" className="text-xs">系統管理員</Badge> : <Badge variant="outline" className="text-xs">用戶</Badge>}</TableCell>
                 <TableCell><Badge variant={u.is_active ? 'success' : 'secondary'}>{u.is_active ? '啟用' : '停用'}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{formatDate(u.created_at)}</TableCell></TableRow>
             ))}</TableBody></Table></CardContent></Card>}

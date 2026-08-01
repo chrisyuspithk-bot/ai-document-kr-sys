@@ -9,10 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileText, Loader2, Download, Check, X, Send } from 'lucide-react';
+import { useApiToken, apiFetch, apiFetchJson } from '@/lib/client-api';
+import { formatDate } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const ACTION_PATH: Record<string, string> = {
+  submit: 'submit',
+  approve: 'approve',
+  reject: 'reject',
+};
 
 export default function DocGenPage() {
   const [prompt, setPrompt] = useState('');
@@ -22,39 +29,67 @@ export default function DocGenPage() {
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const token = useApiToken();
+
+  async function fetchHistory() {
+    if (historyLoading || history.length > 0) return;
+    setHistoryLoading(true);
+    try {
+      const data = await apiFetchJson<any[]>('/api/v1/gen-documents', token);
+      setHistory(data);
+    } catch { setHistory([]); }
+    finally { setHistoryLoading(false); }
+  }
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
     setLoading(true); setError('');
     try {
-      const token = localStorage.getItem('access_token') || '';
-      const res = await fetch(`${API_BASE}/api/v1/document-gen/generate`, {
+      const data = await apiFetchJson('/api/v1/generate', token, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ prompt, template_id: templateId || undefined, title: prompt.slice(0, 80) }),
       });
-      if (!res.ok) throw new Error('Generation failed');
-      setGenerated(await res.json());
+      setGenerated(data);
     } catch { setError('文件生成失敗，請重試。'); }
     finally { setLoading(false); }
   }
 
   async function handleAction(docId: string, action: string) {
+    const actionPath = ACTION_PATH[action];
+    if (!actionPath) return;
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('access_token') || '';
-      await fetch(`${API_BASE}/api/v1/document-gen/${action}/${docId}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
+      await apiFetchJson(`/api/v1/gen-documents/${docId}/${actionPath}`, token, { method: 'POST' });
       setGenerated(null); setPrompt('');
     } catch { setError('操作失敗。'); }
+    finally { setSubmitting(false); }
+  }
+
+  async function handleExport(docId: string, fmt: 'docx' | 'pdf') {
+    setSubmitting(true);
+    try {
+      await apiFetchJson(`/api/v1/gen-documents/${docId}/export?fmt=${fmt}`, token, { method: 'POST' });
+      const res = await apiFetch(`/api/v1/gen-documents/${docId}/download/${fmt}`, token);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${generated?.title || 'document'}.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch { setError('匯出失敗，請先核准文件。'); }
     finally { setSubmitting(false); }
   }
 
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold tracking-tight">文件生成</h1><p className="text-muted-foreground text-sm">使用 AI 生成提案、報告、會議記錄等文件</p></div>
-      <Tabs defaultValue="generate">
+      <Tabs defaultValue="generate" onValueChange={(v) => { if (v === 'history') fetchHistory(); }}>
         <TabsList><TabsTrigger value="generate">生成文件</TabsTrigger><TabsTrigger value="history">生成記錄</TabsTrigger></TabsList>
         <TabsContent value="generate" className="space-y-4">
           <Card>
@@ -90,8 +125,8 @@ export default function DocGenPage() {
                   <CardDescription>狀態：<Badge>{generated.status === 'draft' ? '草稿' : generated.status === 'submitted' ? '已提交' : generated.status === 'approved' ? '已核准' : generated.status}</Badge></CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm"><Download className="mr-1 h-4 w-4" />匯出 Word</Button>
-                  <Button variant="outline" size="sm"><Download className="mr-1 h-4 w-4" />匯出 PDF</Button>
+                  <Button variant="outline" size="sm" disabled={submitting} onClick={() => handleExport(generated.id, 'docx')}><Download className="mr-1 h-4 w-4" />匯出 Word</Button>
+                  <Button variant="outline" size="sm" disabled={submitting} onClick={() => handleExport(generated.id, 'pdf')}><Download className="mr-1 h-4 w-4" />匯出 PDF</Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -109,7 +144,17 @@ export default function DocGenPage() {
           )}
         </TabsContent>
         <TabsContent value="history">
-          <Card><CardHeader><CardTitle className="text-lg">生成記錄</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">尚未有生成記錄</p></CardContent></Card>
+          <Card><CardHeader><CardTitle className="text-lg">生成記錄</CardTitle></CardHeader><CardContent className="p-0">
+            {historyLoading ? <div className="text-center py-12"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></div> :
+              history.length === 0 ? <p className="text-sm text-muted-foreground p-6">尚未有生成記錄</p> :
+              <Table><TableHeader><TableRow><TableHead>標題</TableHead><TableHead>狀態</TableHead><TableHead>版本</TableHead><TableHead>建立日期</TableHead></TableRow></TableHeader>
+                <TableBody>{history.map((doc: any) => (
+                  <TableRow key={doc.id}><TableCell className="font-medium">{doc.title}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{doc.status === 'draft' ? '草稿' : doc.status === 'submitted' ? '已提交' : doc.status === 'approved' ? '已核准' : doc.status === 'rejected' ? '已退回' : doc.status}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">v{doc.version}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(doc.created_at)}</TableCell></TableRow>
+                ))}</TableBody></Table>}
+          </CardContent></Card>
         </TabsContent>
       </Tabs>
     </div>

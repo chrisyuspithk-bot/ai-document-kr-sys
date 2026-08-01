@@ -9,6 +9,11 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
+  // LLM generation can take a while; raise the rewrite proxy timeout from
+  // the 30s default so long-running requests (docgen, summarize) don't drop.
+  experimental: {
+    proxyTimeout: 300000,
+  },
   async rewrites() {
     return [
       {

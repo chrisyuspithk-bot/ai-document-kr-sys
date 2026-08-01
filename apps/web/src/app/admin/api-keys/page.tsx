@@ -9,10 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Copy, Loader2, Ban } from 'lucide-react';
+import { useApiToken, apiFetchJson } from '@/lib/client-api';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function AdminApiKeysPage() {
   const [keys, setKeys] = useState<any[]>([]);
@@ -20,12 +19,12 @@ export default function AdminApiKeysPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [keyName, setKeyName] = useState('');
   const [created, setCreated] = useState<any>(null);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') || '' : '';
+  const token = useApiToken();
 
   async function fetchKeys() {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/api-keys?include_inactive=true`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setKeys(await res.json());
+      const data = await apiFetchJson<any[]>('/api/v1/api-keys?include_inactive=true', token);
+      setKeys(data);
     } catch {}
     setLoading(false);
   }
@@ -34,14 +33,18 @@ export default function AdminApiKeysPage() {
   async function handleCreate() {
     if (!keyName.trim()) return;
     try {
-      const res = await fetch(`${API_BASE}/api/v1/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ name: keyName }) });
-      if (!res.ok) throw new Error('Create failed');
-      setCreated(await res.json()); fetchKeys();
+      const data = await apiFetchJson<any>('/api/v1/api-keys', token, {
+        method: 'POST',
+        body: JSON.stringify({ name: keyName }),
+      });
+      setCreated(data); fetchKeys();
     } catch { toast.error('建立失敗'); }
   }
 
   async function handleRevoke(id: string) {
-    await fetch(`${API_BASE}/api/v1/api-keys/${id}/revoke`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    try {
+      await apiFetchJson(`/api/v1/api-keys/${id}/revoke`, token, { method: 'POST' });
+    } catch {}
     toast.success('已撤銷'); fetchKeys();
   }
 
