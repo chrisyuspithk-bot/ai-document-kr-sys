@@ -1,7 +1,11 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { MessageSquare, FileText, CalendarCheck, ArrowRight } from 'lucide-react';
+import { MessageSquare, FileText, CalendarCheck, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useApiToken, apiFetchJson } from '@/lib/client-api';
+import { formatDate } from '@/lib/utils';
 
 const quickActions = [
   { href: '/chat', label: '開始新對話', icon: MessageSquare, description: '向 AI 助理提問，獲取知識庫資訊' },
@@ -10,6 +14,22 @@ const quickActions = [
 ];
 
 export default function DashboardPage() {
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [meetings, setMeetings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const token = useApiToken();
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([
+      apiFetchJson<any[]>('/api/v1/conversations', token).catch(() => []),
+      apiFetchJson<any[]>('/api/v1/meetings', token).catch(() => []),
+    ]).then(([convs, meets]) => {
+      setConversations((convs || []).slice(0, 5));
+      setMeetings((meets || []).slice(0, 5));
+    }).finally(() => setLoading(false));
+  }, [token]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,7 +68,17 @@ export default function DashboardPage() {
             <CardDescription>您最近的 AI 對話記錄</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">尚未有對話記錄</p>
+            {loading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> :
+              conversations.length === 0 ? <p className="text-sm text-muted-foreground">尚未有對話記錄</p> :
+              <div className="space-y-2">
+                {conversations.map((c: any) => (
+                  <Link key={c.id} href="/chat" className="flex items-center justify-between rounded-md p-2 text-sm hover:bg-muted transition-colors">
+                    <span className="truncate"><MessageSquare className="inline h-3 w-3 mr-2 text-muted-foreground" />{c.title || '未命名對話'}</span>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(c.updated_at)}</span>
+                  </Link>
+                ))}
+              </div>
+            }
           </CardContent>
         </Card>
         <Card>
@@ -57,7 +87,17 @@ export default function DashboardPage() {
             <CardDescription>最近上傳的會議錄音</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">尚未有會議記錄</p>
+            {loading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> :
+              meetings.length === 0 ? <p className="text-sm text-muted-foreground">尚未有會議記錄</p> :
+              <div className="space-y-2">
+                {meetings.map((m: any) => (
+                  <Link key={m.id} href="/meetings" className="flex items-center justify-between rounded-md p-2 text-sm hover:bg-muted transition-colors">
+                    <span className="truncate"><CalendarCheck className="inline h-3 w-3 mr-2 text-muted-foreground" />{m.title}</span>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(m.created_at)}</span>
+                  </Link>
+                ))}
+              </div>
+            }
           </CardContent>
         </Card>
       </div>

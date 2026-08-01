@@ -8,13 +8,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Key } from 'lucide-react';
+import { useApiToken, apiFetch } from '@/lib/client-api';
+import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [displayName, setDisplayName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const token = useApiToken();
 
   useEffect(() => {
     if (session?.user?.name) setDisplayName(session.user.name);
@@ -27,6 +33,21 @@ export default function SettingsPage() {
   function handleSave() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleChangePassword() {
+    if (!currentPw.trim() || !newPw.trim() || !token) return;
+    setPwLoading(true);
+    try {
+      const res = await apiFetch('/api/v1/auth/change-password', token, {
+        method: 'POST',
+        body: JSON.stringify({ old_password: currentPw, new_password: newPw }),
+      });
+      if (!res.ok) { toast.error('密碼變更失敗，請確認目前密碼是否正確。'); return; }
+      toast.success('密碼已變更');
+      setCurrentPw(''); setNewPw('');
+    } catch { toast.error('密碼變更失敗'); }
+    finally { setPwLoading(false); }
   }
 
   return (
@@ -42,6 +63,17 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2"><Label>顯示名稱</Label><Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="您的顯示名稱" /></div>
           <Button onClick={handleSave}>{saved ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />已儲存</> : <><Save className="mr-2 h-4 w-4" />儲存變更</>}</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg"><Key className="inline h-4 w-4 mr-1" />變更密碼</CardTitle><CardDescription>更新您的登入密碼</CardDescription></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2"><Label>目前密碼</Label><Input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="輸入目前密碼" /></div>
+          <div className="space-y-2"><Label>新密碼</Label><Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="輸入新密碼" /></div>
+          <Button onClick={handleChangePassword} disabled={!currentPw.trim() || !newPw.trim() || pwLoading}>
+            {pwLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}變更密碼
+          </Button>
         </CardContent>
       </Card>
 

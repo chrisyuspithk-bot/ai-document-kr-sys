@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +32,15 @@ export default function DocGenPage() {
   const [error, setError] = useState('');
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
   const token = useApiToken();
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetchJson<any[]>('/api/v1/templates', token)
+      .then(setTemplates)
+      .catch(() => {});
+  }, [token]);
 
   async function fetchHistory() {
     if (historyLoading || history.length > 0) return;
@@ -117,7 +125,10 @@ export default function DocGenPage() {
                   <Label>選擇範本（可選）</Label>
                   <Select value={templateId} onValueChange={setTemplateId}>
                     <SelectTrigger><SelectValue placeholder="無範本" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">無範本</SelectItem></SelectContent>
+                    <SelectContent>
+                      <SelectItem value="">無範本</SelectItem>
+                      {templates.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
