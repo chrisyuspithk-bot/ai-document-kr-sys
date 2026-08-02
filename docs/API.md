@@ -216,3 +216,54 @@ result count (see `audit:read`).
 AI assistants, chat/SSE answer generation, document generation, meetings/STT
 endpoints, workflows, and integration APIs will be added under the same
 `/api/v1` prefix with identical auth/permission conventions.
+
+## AI Assistants (Epic 7)
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/assistants` | `assistant:read` | List assistants (`?include_inactive=true`) |
+| POST | `/assistants` | `assistant:write` | Create assistant |
+| GET | `/assistants/{id}` | `assistant:read` | Get assistant |
+| PATCH | `/assistants/{id}` | `assistant:write` | Update assistant (prompt/config changes auto-bump version) |
+| DELETE | `/assistants/{id}` | `assistant:write` | Soft-delete (sets `is_active=false`) |
+| GET | `/assistants/{id}/versions` | `assistant:read` | Version history |
+| POST | `/assistants/{id}/rollback/{version}` | `assistant:write` | Rollback to a previous version |
+
+**Create request:**
+```json
+{
+  "name": "長者服務助理",
+  "description": "協助長者服務相關查詢",
+  "system_prompt": "你是一個專業的長者服務助理...",
+  "model": "deepseek-v4-flash",
+  "kb_ids": ["<uuid>"],
+  "tools": ["retrieval"],
+  "mode": "internal"
+}
+```
+
+## Workflow Automation (Epic 6)
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/workflows` | `workflow:manage` | List workflow definitions (`?status=`) |
+| POST | `/workflows` | `workflow:manage` | Create workflow |
+| GET | `/workflows/{id}` | `workflow:manage` | Get workflow |
+| PATCH | `/workflows/{id}` | `workflow:manage` | Update workflow (activate, add steps, etc.) |
+| DELETE | `/workflows/{id}` | `workflow:manage` | Delete workflow |
+| POST | `/workflows/{id}/trigger` | `workflow:manage` | Trigger an active workflow |
+| GET | `/workflows/runs` | `workflow:manage` | List execution history (`?workflow_id=`) |
+| GET | `/workflows/runs/{run_id}` | `workflow:manage` | Get run detail with approval steps |
+| GET | `/workflows/approvals/pending` | `workflow:manage` | Pending approvals for current user |
+| GET | `/workflows/approvals/all` | `workflow:manage` | All pending approvals (admin) |
+| POST | `/workflows/approvals/{step_id}/approve` | `workflow:manage` | Approve a step |
+| POST | `/workflows/approvals/{step_id}/reject` | `workflow:manage` | Reject a step |
+| POST | `/workflows/dify/callback/{id}` | (public) | Dify webhook callback |
+
+## Analytics & Model Management (Epic 7)
+
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| GET | `/analytics/overview` | `analytics:read` | Dashboard stats (users, KBs, docs, meetings, assistants) |
+| GET | `/analytics/token-usage?days=30` | `analytics:read` | Token usage by model |
+| GET | `/models` | `model:manage` | Available LLM models with metadata |
