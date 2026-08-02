@@ -35,3 +35,7 @@ out/
 data/
 minio-data/
 *.log
+
+# Databases (local dev)
+*.db
+*.sqlite3
