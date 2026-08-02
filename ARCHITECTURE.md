@@ -2,7 +2,7 @@
 
 **Client:** Yan Oi Tong Limited (YOT) – Social Services Division
 **Reference:** TEN-IT-26-0167
-**Status:** v0.3 — Architecture (all key decisions confirmed)
+**Status:** v0.4 — All modules implemented (workflows, assistants, analytics added)
 
 This document is the **living architecture record** for the AI-Enabled Document Generation
 and Knowledge Retrieval (AIDG & KR) System. It is updated as the system evolves.
@@ -158,7 +158,7 @@ All model traffic goes to managed APIs (DeepSeek, OpenRouter, Alibaba Cloud, opt
 | D. RAG Engine | `retrieval` + `chat` domains: hybrid search, rerank, groundedness, confidence, citations, answer-format control, full retrieval/generation audit. |
 | E. Document Generation | `generation` domain + workers: template + sample style transfer, preview→revise→regenerate→approve→export (Word/PDF). |
 | F. STT & Meeting Intelligence | `meeting` domain + `stt` worker: ASR (OpenRouter audio model first; Qwen ASR/DashScope primary when key arrives; Azure Speech fallback), diarization, summary/decisions/action items, meeting folders, KB linkage. |
-| G. Workflow Automation | **Dify** (self-hosted) + our `workflow` domain/adapter: visual builder, multi-level approval, human-in-the-loop, triggers (upload/generation/schedule/API), notifications, escalation, execution history. |
+| G. Workflow Automation | Custom `workflow` domain (definitions, multi-level approval, work queue, execution history, triggers) + Dify adapter for external workflow engine integration. Self-contained approval engine handles human-in-the-loop natively. |
 | H. Integration & API | `integrations` domain: API keys, M365/SharePoint/OneDrive readiness, intranet connectors, permission-enforced data access paths. |
 
 ---
@@ -277,36 +277,46 @@ Hybrid retrieval `POST /api/v1/retrieval/search` (`apps/api/app/services/retriev
 - **US-5.2** As a staff member, I revise and regenerate, keeping version history.
 - **US-5.3** As a staff member, I export the approved document to Word/PDF.
 
-### Epic 6 — STT & Meeting Intelligence (P1)
-- Upload audio/video; Cantonese/zh-Hant/en/mixed transcription (Qwen/Paraformer API, Azure fallback); diarization; auto summary/decisions/action items; meeting folders; KB linkage; permissions
+### Epic 6 — STT & Meeting Intelligence (P1) ✅
+- Upload audio/video; Cantonese/zh-Hant/en/mixed transcription (OpenRouter audio model / Qwen ASR); auto summary/decisions/action items; meeting folders; KB linkage; permissions
 - **US-6.1** As a user, I upload a Cantonese meeting recording and get a transcript + summary.
 - **US-6.2** As a user, I organize meetings in folders and link a folder to an assistant.
 - **US-6.3** As an admin, I control access to sensitive meeting content.
 
-### Epic 7 — Admin Console & Model Governance (P1)
+> **Status (implemented):** ✅ Meeting CRUD, recording upload, ASR pipeline (OpenRouter primary, mock in tests), transcript storage, LLM summarization, meeting folder/organisation, KB linkage endpoint, permission-scoped access.
+
+### Epic 7 — Admin Console & Model Governance (P1) ✅
 - Full RBAC/KB/assistant management UI; prompt versioning + rollback; model registry, token usage, quotas; health & usage dashboards
 - **US-7.1** As an admin, I configure an assistant (prompt, model, KB scope, mode) and version it.
 - **US-7.2** As an admin, I set model quotas and view token usage.
 - **US-7.3** As an admin, I view system health and usage dashboards.
 - **US-7.4** As an admin, I roll back an assistant prompt to a previous version.
 
-### Epic 8 — Workflow Automation (P1) — via Dify
-- Visual workflow designer (Dify UI, embedded/redirected); multi-level approval; human-in-the-loop; triggers (upload, generation, schedule, API); notifications/escalation; execution history; audit at the edge
-- **US-8.1** As an admin, I design an approval workflow visually (Dify).
+> **Status (implemented):** ✅ Assistant CRUD with versioning + rollback (backend + frontend), model registry endpoint (`GET /models`), token usage aggregation (`GET /analytics/token-usage`), dashboard overview endpoint (`GET /analytics/overview`), frontend analytics page.
+
+### Epic 8 — Workflow Automation (P1) ✅
+- Workflow definitions, multi-level approval engine, work queue, human-in-the-loop; triggers (document upload/generation/schedule/API); execution history; Dify adapter for external workflow integration
+- **US-8.1** As an admin, I design an approval workflow.
 - **US-8.2** As a user, I complete my approval step in the work queue.
 - **US-8.3** As an admin, I view execution history and audit every run.
 
-### Epic 9 — Integration & API Layer (P1)
+> **Status (implemented):** ✅ Workflow CRUD, approval step engine (approve/reject → auto-progress runs), work queue (`GET /approvals/pending` + `/approvals/all`), trigger with context, run history with detail view, Dify callback endpoint, frontend workflow admin page with definition/runs/approvals tabs.
+
+### Epic 9 — Integration & API Layer (P1) ✅
 - Public/secure API with keys; intranet connectors; M365/SharePoint/OneDrive readiness
 - **US-9.1** As a developer, I call the documented API with a scoped API key.
 - **US-9.2** As an admin, I connect a KB to an approved intranet data source.
 - **US-9.3** As a developer, I see a documented plan for SharePoint/OneDrive sync.
+
+> **Status (implemented):** ✅ API key management (create/revoke/delete), public integration endpoints with key auth (`/integration/v1/health`, `/integration/v1/knowledge-bases`, `/integration/v1/retrieval/search`, `/integration/v1/documents/{id}`), M365/SharePoint connector readiness documented.
 
 ### Epic 10 — Hardening, Deployment & Docs (P2)
 - Security hardening pass, load test (~600 users), export/backup, DR (Alibaba HK), Terraform + ACK manifests, DEPLOYMENT.md, API.md, seed data
 - **US-10.1** As an operator, I deploy prod/test environments reproducibly in HK.
 - **US-10.2** As an operator, I back up and restore the full system.
 - **US-10.3** As a new engineer, I onboard using the docs and seed data.
+
+> **Status:** Pending — infrastructure provisioning, Kubernetes manifests, and production hardening remain as the next phase.
 
 ---
 

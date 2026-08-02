@@ -155,7 +155,7 @@ class TestUploadAndTranscription:
         )
 
         with patch(
-            "app.services.asr.get_asr_provider",
+            "app.services.meeting.get_asr_provider",
             return_value=AsyncMock(
                 transcribe=AsyncMock(return_value=mock_result),
                 provider_name="mock",
@@ -225,7 +225,7 @@ class TestSummarization:
         )
 
         with patch(
-            "app.services.asr.get_asr_provider",
+            "app.services.meeting.get_asr_provider",
             return_value=AsyncMock(
                 transcribe=AsyncMock(return_value=mock_asr),
                 provider_name="mock",
@@ -298,7 +298,7 @@ class TestSummarization:
             full_text="會議內容。", segments=[], language="yue", confidence=0.9, provider="mock"
         )
         with patch(
-            "app.services.asr.get_asr_provider",
+            "app.services.meeting.get_asr_provider",
             return_value=AsyncMock(
                 transcribe=AsyncMock(return_value=mock_asr), provider_name="mock"
             ),

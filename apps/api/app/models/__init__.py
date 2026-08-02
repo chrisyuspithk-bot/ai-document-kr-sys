@@ -1,5 +1,6 @@
 """Import all models so that ``Base.metadata`` is complete (Alembic autogenerate)."""
 
+from app.models.assistant import Assistant, AssistantVersion
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.conversation import Conversation, Message
@@ -57,9 +58,31 @@ from app.models.rbac import (
 )
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.models.workflow import (
+    APPROVAL_APPROVED,
+    APPROVAL_PENDING,
+    APPROVAL_REJECTED,
+    WF_RUN_COMPLETED,
+    WF_RUN_FAILED,
+    WF_RUN_PENDING,
+    WF_RUN_RUNNING,
+    WF_RUN_WAITING_APPROVAL,
+    WF_STATUS_ACTIVE,
+    WF_STATUS_ARCHIVED,
+    WF_STATUS_DRAFT,
+    ApprovalStep,
+    WorkflowDefinition,
+    WorkflowRun,
+)
 
 __all__ = [
     "ApiKey",
+    "ApprovalStep",
+    "APPROVAL_APPROVED",
+    "APPROVAL_PENDING",
+    "APPROVAL_REJECTED",
+    "Assistant",
+    "AssistantVersion",
     "AuditLog",
     "Base",
     "Conversation",
@@ -109,4 +132,14 @@ __all__ = [
     "User",
     "UserGroup",
     "UserRole",
+    "WF_RUN_COMPLETED",
+    "WF_RUN_FAILED",
+    "WF_RUN_PENDING",
+    "WF_RUN_RUNNING",
+    "WF_RUN_WAITING_APPROVAL",
+    "WF_STATUS_ACTIVE",
+    "WF_STATUS_ARCHIVED",
+    "WF_STATUS_DRAFT",
+    "WorkflowDefinition",
+    "WorkflowRun",
 ]

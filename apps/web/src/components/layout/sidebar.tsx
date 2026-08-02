@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, MessageSquare, FileText, CalendarCheck,
   BookOpen, Users, Bot, ShieldCheck, Key, BarChart3,
-  Settings, ChevronLeft, ChevronRight, ChevronDown, FolderCog,
+  Settings, ChevronLeft, ChevronRight, ChevronDown, FolderCog, Workflow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +32,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/documents', label: '文件管理', icon: FileText },
   { href: '/admin/users', label: '用戶管理', icon: Users },
   { href: '/admin/assistants', label: 'AI 助理', icon: Bot },
+  { href: '/admin/workflows', label: '工作流程', icon: Workflow },
   { href: '/admin/audit', label: '審計日誌', icon: ShieldCheck },
   { href: '/admin/api-keys', label: 'API 密鑰', icon: Key },
   { href: '/admin/analytics', label: '系統分析', icon: BarChart3 },

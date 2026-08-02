@@ -5,6 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    analytics,
+    assistants,
     audit,
     auth,
     chat,
@@ -18,6 +20,7 @@ from app.api.v1.endpoints import (
     rbac,
     retrieval,
     users,
+    workflows,
 )
 
 api_router = APIRouter()
@@ -35,3 +38,6 @@ api_router.include_router(document_gen.router)
 api_router.include_router(meetings.router)
 api_router.include_router(integration.admin_router)
 api_router.include_router(integration.public_router)
+api_router.include_router(assistants.router)
+api_router.include_router(analytics.router)
+api_router.include_router(workflows.router)

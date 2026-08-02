@@ -97,8 +97,9 @@ npm run build                        # 16 routes, verified
 | 3    | RAG & Answer Generation Engine | ✅ done |
 | 4    | Document Generation Engine | ✅ done |
 | 5    | Speech-to-Text & Meeting Intelligence | ✅ done |
+| 6    | Workflow Automation | ✅ done |
 | 7    | Integration & API Layer | ✅ done |
 | 8    | Frontend Portal (Modules A & B) | ✅ done |
-| 6    | Workflow Automation | pending |
+| 9    | Admin Console (assistants, analytics, model mgmt) | ✅ done |
 
 See `docs/ARCHITECTURE.md` for the full architecture and decisions.
